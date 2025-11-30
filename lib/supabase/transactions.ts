@@ -281,3 +281,18 @@ export async function getUserTransactions(walletAddress: string) {
 
   return data;
 }
+
+export async function getRecentTransactions(limit = 5) {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('wallet_address, accounts_closed, net_received, timestamp')
+    .order('timestamp', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching recent transactions:', error);
+    return [];
+  }
+
+  return data;
+}

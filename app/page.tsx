@@ -10,6 +10,7 @@ import Achievements from '@/components/account/Achievements';
 import Leaderboard from '@/components/account/Leaderboard';
 import Logo from '@/components/ui/Logo';
 import StatsCard from '@/components/ui/StatsCard';
+import LiveFeed from '@/components/ui/LiveFeed';
 import { getGlobalStats } from '@/lib/supabase/transactions';
 
 type Section = 'home' | 'scanner' | 'dashboard' | 'history' | 'referral' | 'achievements' | 'leaderboard';
@@ -224,6 +225,11 @@ function HomeContent({ setSection, globalStats }: { setSection: (section: Sectio
           icon="⚡"
           color="green"
         />
+      </div>
+
+      {/* Live Activity Feed */}
+      <div className="mb-12 md:mb-16">
+        <LiveFeed />
       </div>
 
       {/* Quick Access Cards */}
