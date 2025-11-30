@@ -6,9 +6,12 @@ let connectionInstance: Connection | null = null;
 export function getConnection(): Connection {
   if (!connectionInstance) {
     const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 
-                   'https://api.mainnet-beta.solana.com';
+                   'https://api.devnet.solana.com';
     
-    connectionInstance = new Connection(rpcUrl, COMMITMENT as Commitment);
+    connectionInstance = new Connection(rpcUrl, {
+      commitment: COMMITMENT as Commitment,
+      confirmTransactionInitialTimeout: 60000,
+    });
   }
   
   return connectionInstance;

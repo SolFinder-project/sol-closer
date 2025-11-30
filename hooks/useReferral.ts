@@ -2,40 +2,31 @@
 
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useEffect, useState } from 'react';
-import { StorageService } from '@/lib/utils/storage';
-import { ReferralStats } from '@/types/user-stats';
+import { getUserStats } from '@/lib/supabase/transactions';
+
+interface ReferralStats {
+  totalReferrals: number;
+  totalEarnings: number;
+}
 
 export function useReferral() {
   const { publicKey } = useWallet();
   const [referralCode, setReferralCode] = useState<string>('');
   const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
-  const [referrerCode, setReferrerCode] = useState<string | null>(null);
   const [referrerWallet, setReferrerWallet] = useState<string | null>(null);
 
+  // Check URL for referral code on mount
   useEffect(() => {
-    // Check URL for referral code on mount
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      const refCode = params.get('ref');
+      const refWallet = params.get('ref');
       
-      if (refCode) {
-        console.log('🎁 Referral code detected:', refCode);
+      if (refWallet && refWallet.length >= 32) {
+        console.log('🎁 Referral wallet detected:', refWallet.slice(0, 8) + '...');
         
-        // Save referrer code to sessionStorage (expires when tab closes)
-        sessionStorage.setItem('solcloser_referrer', refCode);
-        setReferrerCode(refCode);
-        
-        // Get referrer wallet from mapping
-        const mapping = localStorage.getItem('solcloser_referral_mapping');
-        if (mapping) {
-          const map = JSON.parse(mapping);
-          const wallet = map[refCode];
-          if (wallet) {
-            console.log('✅ Referrer wallet found:', wallet);
-            sessionStorage.setItem('solcloser_referrer_wallet', wallet);
-            setReferrerWallet(wallet);
-          }
-        }
+        // Save referrer wallet to sessionStorage
+        sessionStorage.setItem('solcloser_referrer_wallet', refWallet);
+        setReferrerWallet(refWallet);
         
         // Clean URL without reloading
         const url = new URL(window.location.href);
@@ -43,13 +34,7 @@ export function useReferral() {
         window.history.replaceState({}, '', url.toString());
       } else {
         // Check if we have a referrer in current session
-        const savedReferrer = sessionStorage.getItem('solcloser_referrer');
         const savedWallet = sessionStorage.getItem('solcloser_referrer_wallet');
-        
-        if (savedReferrer) {
-          setReferrerCode(savedReferrer);
-        }
-        
         if (savedWallet) {
           setReferrerWallet(savedWallet);
         }
@@ -57,36 +42,56 @@ export function useReferral() {
     }
   }, []);
 
+  // Load user stats and set referral code when wallet connects
   useEffect(() => {
-    if (publicKey) {
-      // Generate referral code (first 8 chars of wallet)
-      const code = publicKey.toString().slice(0, 8).toUpperCase();
-      setReferralCode(code);
+    async function loadStats() {
+      if (publicKey) {
+        const walletAddress = publicKey.toString();
+        
+        // Use wallet address as referral code
+        setReferralCode(walletAddress);
 
-      // Save mapping: code -> wallet (persists in localStorage)
-      const mapping = localStorage.getItem('solcloser_referral_mapping');
-      const map = mapping ? JSON.parse(mapping) : {};
-      map[code] = publicKey.toString();
-      localStorage.setItem('solcloser_referral_mapping', JSON.stringify(map));
+        // Clear referrer if it's the same as current wallet (can't refer yourself)
+        const savedReferrer = sessionStorage.getItem('solcloser_referrer_wallet');
+        if (savedReferrer === walletAddress) {
+          sessionStorage.removeItem('solcloser_referrer_wallet');
+          setReferrerWallet(null);
+        }
 
-      // Load referral stats
-      const stats = StorageService.getReferralStats(publicKey.toString());
-      setReferralStats(stats);
+        // Load referral stats from Supabase
+        const stats = await getUserStats(walletAddress);
+        if (stats) {
+          setReferralStats({
+            totalReferrals: stats.referral_count || 0,
+            totalEarnings: stats.referral_earnings || 0,
+          });
+        }
+      }
     }
+
+    loadStats();
   }, [publicKey]);
 
   const getReferralLink = () => {
+    if (!referralCode) return '';
+    
     const baseUrl = typeof window !== 'undefined' 
       ? window.location.origin 
       : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     return `${baseUrl}?ref=${referralCode}`;
   };
 
+  // Get shortened display code (first 4 + last 4 chars)
+  const getDisplayCode = () => {
+    if (!referralCode) return '';
+    return `${referralCode.slice(0, 4)}...${referralCode.slice(-4)}`;
+  };
+
   return {
-    referralCode,
+    referralCode,        // Full wallet address
+    displayCode: getDisplayCode(),  // Shortened for display
     referralStats,
-    referrerCode,
-    referrerWallet,
+    referrerWallet,      // Referrer's full wallet address
     getReferralLink,
   };
 }

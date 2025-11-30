@@ -17,18 +17,20 @@ export default function StatsCard({ title, value, icon, trend, color = 'purple' 
   };
 
   return (
-    <div className={`card-cyber bg-gradient-to-br ${colorClasses[color]} group hover:scale-105 transition-transform duration-300`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-gray-400 mb-1">{title}</p>
-          <p className="text-3xl font-bold font-[family-name:var(--font-orbitron)] text-glow">{value}</p>
-          {trend && (
-            <p className="text-xs text-neon-green mt-1">↗ {trend}</p>
-          )}
+    <div className={`card-cyber bg-gradient-to-br ${colorClasses[color]} group hover:scale-105 transition-transform duration-300 relative overflow-hidden`}>
+      <div className="flex flex-col">
+        <div className="flex items-start justify-between mb-1">
+          <p className="text-xs md:text-sm text-gray-400">{title}</p>
+          <div className="text-2xl md:text-3xl opacity-50 group-hover:opacity-100 transition-opacity">
+            {icon}
+          </div>
         </div>
-        <div className="text-4xl opacity-50 group-hover:opacity-100 transition-opacity">
-          {icon}
-        </div>
+        <p className="text-xl md:text-3xl font-bold font-[family-name:var(--font-orbitron)] text-glow break-all">
+          {value}
+        </p>
+        {trend && (
+          <p className="text-xs text-neon-green mt-1">↗ {trend}</p>
+        )}
       </div>
     </div>
   );

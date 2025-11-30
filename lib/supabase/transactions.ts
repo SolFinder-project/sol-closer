@@ -17,7 +17,17 @@ export async function saveTransaction(data: TransactionData) {
     // 1. Sauvegarder la transaction
     const { error: txError } = await supabase
       .from('transactions')
-      .insert([data]);
+      .insert([{
+        signature: data.signature,
+        wallet_address: data.wallet_address,
+        accounts_closed: data.accounts_closed,
+        sol_reclaimed: data.sol_reclaimed,
+        fee: data.fee,
+        net_received: data.net_received,
+        referrer_code: data.referrer_code,
+        referral_earned: data.referral_earned,
+        timestamp: data.timestamp,
+      }]);
 
     if (txError) throw txError;
 
@@ -28,7 +38,7 @@ export async function saveTransaction(data: TransactionData) {
     await updateGlobalStats(data);
 
     // 4. Si referral, mettre à jour les stats du parrain
-    if (data.referrer_code && data.referral_earned) {
+    if (data.referrer_code && data.referral_earned && data.referral_earned > 0) {
       await updateReferrerStats(data.referrer_code, data.referral_earned, data.wallet_address);
     }
 
@@ -51,7 +61,6 @@ async function updateUserStats(data: TransactionData) {
   }
 
   if (existing) {
-    // Update existing - FIX: Convertir en Number
     const { error } = await supabase
       .from('user_stats')
       .update({
@@ -67,7 +76,6 @@ async function updateUserStats(data: TransactionData) {
 
     if (error) throw error;
   } else {
-    // Create new
     const { error } = await supabase
       .from('user_stats')
       .insert([{
@@ -79,6 +87,8 @@ async function updateUserStats(data: TransactionData) {
         transaction_count: 1,
         first_transaction_at: data.timestamp,
         last_transaction_at: data.timestamp,
+        referral_earnings: 0,
+        referral_count: 0,
       }]);
 
     if (error) throw error;
@@ -92,20 +102,35 @@ async function updateGlobalStats(data: TransactionData) {
     .eq('id', 1)
     .single();
 
-  if (fetchError) throw fetchError;
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    throw fetchError;
+  }
 
-  // FIX: Convertir en Number au lieu de BigInt
-  const { error } = await supabase
-    .from('global_stats')
-    .update({
-      total_accounts_closed: Number(stats.total_accounts_closed) + Number(data.accounts_closed),
-      total_sol_reclaimed: Number(stats.total_sol_reclaimed) + Number(data.sol_reclaimed),
-      total_transactions: Number(stats.total_transactions) + 1,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', 1);
+  if (stats) {
+    const { error } = await supabase
+      .from('global_stats')
+      .update({
+        total_accounts_closed: Number(stats.total_accounts_closed) + Number(data.accounts_closed),
+        total_sol_reclaimed: Number(stats.total_sol_reclaimed) + Number(data.sol_reclaimed),
+        total_transactions: Number(stats.total_transactions) + 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', 1);
 
-  if (error) throw error;
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from('global_stats')
+      .insert([{
+        id: 1,
+        total_accounts_closed: data.accounts_closed,
+        total_sol_reclaimed: data.sol_reclaimed,
+        total_transactions: 1,
+        total_users: 1,
+      }]);
+
+    if (error) throw error;
+  }
 
   // Update total_users count
   const { count } = await supabase
@@ -120,23 +145,58 @@ async function updateGlobalStats(data: TransactionData) {
   }
 }
 
-async function updateReferrerStats(referrerCode: string, amount: number, referredWallet: string) {
-  const { data: referrerStats } = await supabase
+async function updateReferrerStats(referrerWallet: string, amount: number, referredWallet: string) {
+  console.log(`📊 Updating referrer stats: ${referrerWallet} earned ${amount} SOL from ${referredWallet}`);
+  
+  // Le referrer_code est maintenant l'adresse wallet complète
+  const { data: referrerStats, error: fetchError } = await supabase
     .from('user_stats')
     .select('*')
-    .ilike('wallet_address', `${referrerCode}%`)
-    .limit(1)
+    .eq('wallet_address', referrerWallet)
     .single();
 
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    console.error('Error fetching referrer stats:', fetchError);
+    return;
+  }
+
   if (referrerStats) {
-    await supabase
+    const { error } = await supabase
       .from('user_stats')
       .update({
         referral_earnings: Number(referrerStats.referral_earnings || 0) + Number(amount),
         referral_count: Number(referrerStats.referral_count || 0) + 1,
         updated_at: new Date().toISOString(),
       })
-      .eq('wallet_address', referrerStats.wallet_address);
+      .eq('wallet_address', referrerWallet);
+
+    if (error) {
+      console.error('Error updating referrer stats:', error);
+    } else {
+      console.log(`✅ Referrer ${referrerWallet.slice(0, 8)} credited with ${amount} SOL`);
+    }
+  } else {
+    // Le parrain n'a pas encore de stats, créer une entrée
+    const { error } = await supabase
+      .from('user_stats')
+      .insert([{
+        wallet_address: referrerWallet,
+        total_accounts_closed: 0,
+        total_sol_reclaimed: 0,
+        total_fees_paid: 0,
+        total_net_received: 0,
+        transaction_count: 0,
+        first_transaction_at: Date.now(),
+        last_transaction_at: Date.now(),
+        referral_earnings: amount,
+        referral_count: 1,
+      }]);
+
+    if (error) {
+      console.error('Error creating referrer stats:', error);
+    } else {
+      console.log(`✅ Created referrer stats for ${referrerWallet.slice(0, 8)} with ${amount} SOL`);
+    }
   }
 }
 
@@ -163,8 +223,30 @@ export async function getGlobalStats() {
     .single();
 
   if (error) {
-    console.error('Error fetching global stats:', error);
-    return null;
+    if (error.code === 'PGRST116') {
+      const { data: newData, error: insertError } = await supabase
+        .from('global_stats')
+        .insert([{
+          id: 1,
+          total_accounts_closed: 0,
+          total_sol_reclaimed: 0,
+          total_transactions: 0,
+          total_users: 0,
+        }])
+        .select()
+        .single();
+      
+      if (!insertError && newData) {
+        return newData;
+      }
+    }
+    
+    return {
+      total_accounts_closed: 0,
+      total_sol_reclaimed: 0,
+      total_transactions: 0,
+      total_users: 0,
+    };
   }
 
   return data;

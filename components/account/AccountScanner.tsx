@@ -9,7 +9,7 @@ import { useReferral } from '@/hooks/useReferral';
 
 export default function AccountScanner() {
   const { publicKey, signTransaction } = useWallet();
-  const { referrerCode, referrerWallet } = useReferral();
+  const { referrerWallet } = useReferral();
   const [accounts, setAccounts] = useState<TokenAccount[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -20,11 +20,10 @@ export default function AccountScanner() {
   // Debug referral
   useEffect(() => {
     console.log('🔍 Referral Debug:', {
-      referrerCode,
       referrerWallet,
-      hasReferrer: !!referrerCode,
+      hasReferrer: !!referrerWallet,
     });
-  }, [referrerCode, referrerWallet]);
+  }, [referrerWallet]);
 
   const handleScan = async () => {
     if (!publicKey) {
@@ -83,7 +82,6 @@ export default function AccountScanner() {
       );
       
       console.log('💰 Closing with referral:', {
-        referrerCode,
         referrerWallet,
         accountsCount: accountsToClose.length,
       });
@@ -97,8 +95,9 @@ export default function AccountScanner() {
       if (result.success) {
         let successMsg = `Successfully closed ${result.accountsClosed} accounts! Reclaimed ${result.solReclaimed.toFixed(6)} SOL`;
         
-        if (referrerCode && referrerWallet) {
-          successMsg += ` | 🎁 10% bonus sent to your referrer (${referrerCode})!`;
+        if (referrerWallet) {
+          const shortReferrer = `${referrerWallet.slice(0, 4)}...${referrerWallet.slice(-4)}`;
+          successMsg += ` | 🎁 10% bonus sent to your referrer (${shortReferrer})!`;
         }
         
         setSuccess(successMsg);
@@ -121,8 +120,13 @@ export default function AccountScanner() {
 
   const feePercentage = 15;
   const feeAmount = (selectedTotal * feePercentage) / 100;
-  const referralAmount = referrerCode ? (selectedTotal * 10) / 100 : 0;
+  const referralAmount = referrerWallet ? (selectedTotal * 10) / 100 : 0;
   const netAmount = selectedTotal - feeAmount;
+
+  // Format referrer display
+  const referrerDisplay = referrerWallet 
+    ? `${referrerWallet.slice(0, 4)}...${referrerWallet.slice(-4)}`
+    : null;
 
   if (!publicKey) {
     return (
@@ -136,17 +140,17 @@ export default function AccountScanner() {
   return (
     <div className="space-y-6">
       {/* Referral banner */}
-      {referrerCode && referrerWallet && (
+      {referrerWallet && (
         <div className="card-cyber border-neon-green/50 bg-gradient-to-r from-neon-green/10 to-transparent animate-slide-up">
           <div className="flex items-center gap-3">
             <div className="text-3xl animate-pulse">🎁</div>
             <div>
               <p className="text-lg font-bold text-neon-green">Referral Active!</p>
               <p className="text-sm text-gray-300">
-                Your referrer (<span className="font-mono text-neon-green">{referrerCode}</span>) will get 10% bonus
+                Your referrer will receive 10% of recovered SOL
               </p>
               <p className="text-xs text-gray-500 mt-1 font-mono">
-                Referrer: {referrerWallet.slice(0, 8)}...{referrerWallet.slice(-6)}
+                Referrer: {referrerDisplay}
               </p>
             </div>
           </div>
@@ -198,7 +202,7 @@ export default function AccountScanner() {
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
               {accounts.map((account) => (
                 <div
                   key={account.pubkey.toString()}
@@ -210,16 +214,16 @@ export default function AccountScanner() {
                   }`}
                 >
                   <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-mono text-sm text-gray-400">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono text-sm text-gray-400 truncate">
                         {account.pubkey.toString().slice(0, 8)}...
                         {account.pubkey.toString().slice(-8)}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 truncate">
                         Mint: {account.mint.toString().slice(0, 12)}...
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right ml-2 flex-shrink-0">
                       <p className="text-lg font-bold text-neon-green font-mono">
                         +{(account.rentExemptReserve / 1e9).toFixed(6)} SOL
                       </p>
@@ -263,7 +267,7 @@ export default function AccountScanner() {
                 </span>
               </div>
 
-              {referrerCode && referralAmount > 0 && (
+              {referrerWallet && referralAmount > 0 && (
                 <div className="flex justify-between p-3 rounded-lg bg-neon-green/10 border border-neon-green/30">
                   <span className="text-neon-green font-semibold">🎁 Referrer Bonus (10%)</span>
                   <span className="font-bold text-neon-green font-mono">

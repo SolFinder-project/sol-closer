@@ -26,7 +26,6 @@ export default function Leaderboard() {
     }
     loadLeaderboard();
 
-    // Refresh toutes les 30 secondes
     const interval = setInterval(loadLeaderboard, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -46,7 +45,7 @@ export default function Leaderboard() {
   };
 
   const formatWallet = (address: string) => {
-    return `${address.slice(0, 8)}...${address.slice(-4)}`;
+    return `${address.slice(0, 4)}...${address.slice(-4)}`;
   };
 
   const getEmojiForRank = (rank: number) => {
@@ -81,53 +80,53 @@ export default function Leaderboard() {
 
   return (
     <div className="animate-slide-up">
-      <div className="text-center mb-12">
-        <h1 className="text-5xl font-bold font-[family-name:var(--font-orbitron)] mb-4">
+      <div className="text-center mb-8 md:mb-12">
+        <h1 className="text-3xl md:text-5xl font-bold font-[family-name:var(--font-orbitron)] mb-4">
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-pink">
             🏆 Leaderboard
           </span>
         </h1>
-        <p className="text-gray-400 text-lg">
+        <p className="text-gray-400 text-sm md:text-lg">
           Compete with others and see top performers globally
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex justify-center gap-4 mb-8">
+      {/* Tabs - responsive */}
+      <div className="flex flex-wrap justify-center gap-2 md:gap-4 mb-6 md:mb-8">
         <button
           onClick={() => setActiveTab('sol')}
-          className={`px-6 py-3 rounded-lg font-bold transition-all ${
+          className={`px-3 md:px-6 py-2 md:py-3 rounded-lg font-bold text-xs md:text-base transition-all ${
             activeTab === 'sol'
               ? 'bg-neon-purple text-white'
               : 'bg-dark-card text-gray-400 hover:bg-dark-card/80'
           }`}
         >
-          💎 Most SOL Reclaimed
+          💎 <span className="hidden sm:inline">Most </span>SOL
         </button>
         <button
           onClick={() => setActiveTab('accounts')}
-          className={`px-6 py-3 rounded-lg font-bold transition-all ${
+          className={`px-3 md:px-6 py-2 md:py-3 rounded-lg font-bold text-xs md:text-base transition-all ${
             activeTab === 'accounts'
               ? 'bg-neon-purple text-white'
               : 'bg-dark-card text-gray-400 hover:bg-dark-card/80'
           }`}
         >
-          🔒 Most Accounts Closed
+          🔒 <span className="hidden sm:inline">Most </span>Accounts
         </button>
         <button
           onClick={() => setActiveTab('referrals')}
-          className={`px-6 py-3 rounded-lg font-bold transition-all ${
+          className={`px-3 md:px-6 py-2 md:py-3 rounded-lg font-bold text-xs md:text-base transition-all ${
             activeTab === 'referrals'
               ? 'bg-neon-purple text-white'
               : 'bg-dark-card text-gray-400 hover:bg-dark-card/80'
           }`}
         >
-          ⭐ Most Referrals
+          ⭐ <span className="hidden sm:inline">Most </span>Referrals
         </button>
       </div>
 
-      {/* Leaderboard */}
-      <div className="space-y-4">
+      {/* Leaderboard - responsive */}
+      <div className="space-y-3 md:space-y-4">
         {sortedData.map((user, index) => {
           const rank = index + 1;
           const value =
@@ -139,25 +138,25 @@ export default function Leaderboard() {
 
           const label =
             activeTab === 'sol'
-              ? 'SOL Reclaimed'
+              ? 'SOL'
               : activeTab === 'accounts'
-              ? 'Accounts Closed'
+              ? 'Accounts'
               : 'SOL Earned';
 
           return (
             <div
               key={user.wallet_address}
-              className={`card-cyber flex items-center justify-between p-6 hover:scale-[1.02] transition-transform ${
+              className={`card-cyber flex items-center justify-between p-4 md:p-6 hover:scale-[1.02] transition-transform ${
                 rank <= 3 ? 'border-2 border-neon-purple/50' : ''
               }`}
             >
-              <div className="flex items-center gap-6">
-                <div className="text-5xl">{getEmojiForRank(rank)}</div>
+              <div className="flex items-center gap-3 md:gap-6">
+                <div className="text-3xl md:text-5xl">{getEmojiForRank(rank)}</div>
                 <div>
-                  <div className="text-2xl font-bold text-white">
-                    {rank <= 3 ? `User ${rank}` : `#${rank}`}
+                  <div className="text-lg md:text-2xl font-bold text-white">
+                    #{rank}
                   </div>
-                  <div className="text-sm text-gray-400 font-mono">
+                  <div className="text-xs md:text-sm text-gray-400 font-mono">
                     {formatWallet(user.wallet_address)}
                   </div>
                 </div>
@@ -165,7 +164,7 @@ export default function Leaderboard() {
 
               <div className="text-right">
                 <div
-                  className={`text-3xl font-bold ${
+                  className={`text-xl md:text-3xl font-bold ${
                     activeTab === 'sol'
                       ? 'text-neon-purple'
                       : activeTab === 'accounts'
@@ -175,7 +174,7 @@ export default function Leaderboard() {
                 >
                   {value}
                 </div>
-                <div className="text-sm text-gray-400">{label}</div>
+                <div className="text-xs md:text-sm text-gray-400">{label}</div>
               </div>
             </div>
           );
@@ -183,7 +182,7 @@ export default function Leaderboard() {
       </div>
 
       {/* Live indicator */}
-      <div className="mt-8 text-center">
+      <div className="mt-6 md:mt-8 text-center">
         <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-sm">
           <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
           Live Data from Supabase

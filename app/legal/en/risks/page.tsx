@@ -251,7 +251,7 @@ export default function RiskDisclaimer() {
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">10. Acceptance of Risks</h2>
             <div className="p-6 bg-yellow-500/10 border-2 border-yellow-500/50 rounded-lg">
               <p className="font-bold text-yellow-400 mb-4">
-                BY USING SOLFINDER, YOU ACKNOWLEDGE THAT:
+                BY USING SOLCLOSER, YOU ACKNOWLEDGE THAT:
               </p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>You have read and understood this Risk Disclaimer</li>

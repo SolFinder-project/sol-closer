@@ -2,6 +2,7 @@ import {
   PublicKey, 
   Transaction, 
   SystemProgram,
+  ComputeBudgetProgram,
 } from '@solana/web3.js';
 import { 
   createCloseAccountInstruction,
@@ -9,9 +10,17 @@ import {
 import { getConnection } from './connection';
 import { TokenAccount, CloseAccountResult } from '@/types/token-account';
 import { TOKEN_PROGRAM_ID } from './constants';
-import { StorageService } from '@/lib/utils/storage';
-import { TransactionHistory } from '@/types/user-stats';
 import { saveTransaction } from '@/lib/supabase/transactions';
+
+const BATCH_SIZE = 20;
+
+function chunk<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+}
 
 export async function closeTokenAccounts(
   accounts: TokenAccount[],
@@ -23,152 +32,138 @@ export async function closeTokenAccounts(
       throw new Error('Wallet not connected');
     }
 
-    // Vérifie que le wallet de fees est configuré
     if (!process.env.NEXT_PUBLIC_FEE_RECIPIENT_WALLET) {
       throw new Error('Fee recipient wallet not configured. Please contact support.');
     }
 
     const connection = getConnection();
-    const transaction = new Transaction();
-
     const feePercentage = Number(process.env.NEXT_PUBLIC_SERVICE_FEE_PERCENTAGE || 15);
     const referralFeePercentage = Number(process.env.NEXT_PUBLIC_REFERRAL_FEE_PERCENTAGE || 10);
-    
     const feeRecipient = new PublicKey(process.env.NEXT_PUBLIC_FEE_RECIPIENT_WALLET);
 
+    const batches = chunk(accounts, BATCH_SIZE);
+    console.log(`📦 Processing ${accounts.length} accounts in ${batches.length} batches`);
+
+    let totalAccountsClosed = 0;
     let totalReclaimable = 0;
+    let allSignatures: string[] = [];
+    let finalReferralAmount = 0;
 
-    // Close all accounts
-    for (const account of accounts) {
-      const closeInstruction = createCloseAccountInstruction(
-        account.pubkey,
-        walletAdapter.publicKey,
-        walletAdapter.publicKey,
-        [],
-        TOKEN_PROGRAM_ID
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      console.log(`🔄 Processing batch ${i + 1}/${batches.length} (${batch.length} accounts)`);
+
+      const transaction = new Transaction();
+
+      transaction.add(
+        ComputeBudgetProgram.setComputeUnitLimit({
+          units: 300_000,
+        })
       );
-      transaction.add(closeInstruction);
-      totalReclaimable += account.rentExemptReserve;
-    }
 
-    const totalFeeAmount = Math.floor((totalReclaimable * feePercentage) / 100);
-    let referralAmount = 0;
-    let referrerCode: string | undefined;
+      let batchReclaimable = 0;
 
-    // Handle referral
-    if (referrerWallet) {
-      try {
-        const referrerPubkey = new PublicKey(referrerWallet);
-        referralAmount = Math.floor((totalReclaimable * referralFeePercentage) / 100);
-        const platformAmount = totalFeeAmount - referralAmount;
-        
-        // Génère le referrer code (8 premiers chars)
-        referrerCode = referrerWallet.slice(0, 8).toUpperCase();
-        
-        // Send platform fee
-        if (platformAmount > 0) {
-          const platformInstruction = SystemProgram.transfer({
+      for (const account of batch) {
+        const closeInstruction = createCloseAccountInstruction(
+          account.pubkey,
+          walletAdapter.publicKey,
+          walletAdapter.publicKey,
+          [],
+          TOKEN_PROGRAM_ID
+        );
+        transaction.add(closeInstruction);
+        batchReclaimable += account.rentExemptReserve;
+      }
+
+      // Fees sur le dernier batch seulement
+      if (i === batches.length - 1) {
+        const grandTotal = totalReclaimable + batchReclaimable;
+        const totalFeeAmount = Math.floor(grandTotal * feePercentage / 100);
+
+        if (referrerWallet && referrerWallet !== walletAdapter.publicKey.toString()) {
+          try {
+            const referrerPubkey = new PublicKey(referrerWallet);
+            finalReferralAmount = Math.floor(grandTotal * referralFeePercentage / 100);
+            const platformAmount = totalFeeAmount - finalReferralAmount;
+            
+            if (platformAmount > 0) {
+              transaction.add(SystemProgram.transfer({
+                fromPubkey: walletAdapter.publicKey,
+                toPubkey: feeRecipient,
+                lamports: platformAmount,
+              }));
+            }
+            
+            if (finalReferralAmount > 0) {
+              transaction.add(SystemProgram.transfer({
+                fromPubkey: walletAdapter.publicKey,
+                toPubkey: referrerPubkey,
+                lamports: finalReferralAmount,
+              }));
+            }
+
+            console.log(`✅ Referral: ${finalReferralAmount / 1e9} SOL to ${referrerWallet.slice(0, 8)}`);
+          } catch (error) {
+            console.error('Invalid referrer wallet:', error);
+            finalReferralAmount = 0;
+            transaction.add(SystemProgram.transfer({
+              fromPubkey: walletAdapter.publicKey,
+              toPubkey: feeRecipient,
+              lamports: totalFeeAmount,
+            }));
+          }
+        } else {
+          transaction.add(SystemProgram.transfer({
             fromPubkey: walletAdapter.publicKey,
             toPubkey: feeRecipient,
-            lamports: platformAmount,
-          });
-          transaction.add(platformInstruction);
+            lamports: totalFeeAmount,
+          }));
         }
-        
-        // Send referral reward
-        if (referralAmount > 0) {
-          const referralInstruction = SystemProgram.transfer({
-            fromPubkey: walletAdapter.publicKey,
-            toPubkey: referrerPubkey,
-            lamports: referralAmount,
-          });
-          transaction.add(referralInstruction);
-        }
-
-        console.log(`✅ Referral: ${referralAmount / 1e9} SOL to ${referrerWallet.slice(0, 8)}`);
-      } catch (error) {
-        console.error('Invalid referrer wallet, sending full fee to platform:', error);
-        referralAmount = 0;
-        referrerCode = undefined;
-        const feeInstruction = SystemProgram.transfer({
-          fromPubkey: walletAdapter.publicKey,
-          toPubkey: feeRecipient,
-          lamports: totalFeeAmount,
-        });
-        transaction.add(feeInstruction);
       }
-    } else {
-      // No referral: send full fee to platform
-      const feeInstruction = SystemProgram.transfer({
-        fromPubkey: walletAdapter.publicKey,
-        toPubkey: feeRecipient,
-        lamports: totalFeeAmount,
-      });
-      transaction.add(feeInstruction);
+
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = walletAdapter.publicKey;
+
+      const signed = await walletAdapter.signTransaction(transaction);
+      const signature = await connection.sendRawTransaction(signed.serialize());
+
+      await connection.confirmTransaction(signature, 'confirmed');
+
+      totalAccountsClosed += batch.length;
+      totalReclaimable += batchReclaimable;
+      allSignatures.push(signature);
+
+      console.log(`✅ Batch ${i + 1} complete: ${signature.slice(0, 8)}...`);
     }
 
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = walletAdapter.publicKey;
-
-    const signed = await walletAdapter.signTransaction(transaction);
-    const signature = await connection.sendRawTransaction(signed.serialize());
-
-    await connection.confirmTransaction(signature, 'confirmed');
-
-    // Calculate amounts
     const solReclaimed = totalReclaimable / 1e9;
+    const totalFeeAmount = Math.floor((totalReclaimable * feePercentage) / 100);
     const fee = totalFeeAmount / 1e9;
     const netReceived = solReclaimed - fee;
+    const referralEarnedSol = finalReferralAmount / 1e9;
 
-    // Save transaction history (localStorage - backup)
-    const transactionHistory: TransactionHistory = {
-      id: signature.slice(0, 16),
-      signature,
-      timestamp: Date.now(),
-      accountsClosed: accounts.length,
-      solReclaimed,
-      fee,
-      netReceived,
-      referralEarned: referralAmount > 0 ? referralAmount / 1e9 : undefined,
-    };
-
-    StorageService.saveTransaction(
-      walletAdapter.publicKey.toString(),
-      transactionHistory
-    );
-
-    // 🔥 NOUVEAU : Save to Supabase
+    // Save to Supabase
     try {
       await saveTransaction({
-        signature,
+        signature: allSignatures[0],
         wallet_address: walletAdapter.publicKey.toString(),
-        accounts_closed: accounts.length,
+        accounts_closed: totalAccountsClosed,
         sol_reclaimed: solReclaimed,
         fee,
         net_received: netReceived,
-        referrer_code: referrerCode,
-        referral_earned: referralAmount > 0 ? referralAmount / 1e9 : undefined,
+        referrer_code: referrerWallet || undefined,
+        referral_earned: referralEarnedSol > 0 ? referralEarnedSol : undefined,
         timestamp: Date.now(),
       });
       console.log('✅ Transaction saved to Supabase');
     } catch (supabaseError) {
-      console.error('⚠️ Failed to save to Supabase (non-blocking):', supabaseError);
-      // Non-blocking: l'app continue même si Supabase échoue
-    }
-
-    // Update referral stats in localStorage (legacy)
-    if (referrerWallet && referralAmount > 0) {
-      StorageService.updateReferralStats(
-        referrerWallet,
-        walletAdapter.publicKey.toString(),
-        referralAmount / 1e9
-      );
+      console.error('⚠️ Failed to save to Supabase:', supabaseError);
     }
 
     return {
-      signature,
-      accountsClosed: accounts.length,
+      signature: allSignatures[0],
+      accountsClosed: totalAccountsClosed,
       solReclaimed: netReceived,
       success: true,
     };
