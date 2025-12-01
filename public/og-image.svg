@@ -1,0 +1,58 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0a0f" />
+      <stop offset="50%" stop-color="#0f0a15" />
+      <stop offset="100%" stop-color="#0a0a0f" />
+    </linearGradient>
+    <linearGradient id="hexGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A855F7" />
+      <stop offset="50%" stop-color="#EC4899" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#A855F7" />
+      <stop offset="50%" stop-color="#EC4899" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+    <linearGradient id="diamondGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06B6D4" />
+      <stop offset="50%" stop-color="#A855F7" />
+      <stop offset="100%" stop-color="#EC4899" />
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <radialGradient id="orbGlow1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#A855F7" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#A855F7" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="orbGlow2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#EC4899" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#EC4899" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bgGradient)"/>
+  <circle cx="150" cy="100" r="200" fill="url(#orbGlow1)" />
+  <circle cx="1050" cy="530" r="250" fill="url(#orbGlow2)" />
+  <g transform="translate(250, 315) scale(2.2)">
+    <circle cx="0" cy="0" r="60" fill="url(#orbGlow1)" />
+    <path d="M0 -42 L36 -21 L36 21 L0 42 L-36 21 L-36 -21 Z" stroke="url(#hexGradient)" stroke-width="3.5" fill="rgba(168, 85, 247, 0.05)" filter="url(#glow)" />
+    <path d="M0 -35 L30 -17.5 L30 17.5 L0 35 L-30 17.5 L-30 -17.5 Z" stroke="url(#hexGradient)" stroke-width="2" fill="none" opacity="0.4" />
+    <path d="M0 -18 L-8 -2 L0 2 Z" fill="#FFFFFF" opacity="0.6" />
+    <path d="M0 -18 L15 -2 L0 18 L-15 -2 Z" fill="url(#diamondGradient)" filter="url(#glow)" />
+    <path d="M0 -18 L15 -2 L0 2 L-15 -2 Z" fill="#06B6D4" opacity="0.7" />
+    <circle cx="0" cy="-10" r="2" fill="#FFFFFF" opacity="0.8" />
+    <circle cx="18" cy="-15" r="11" stroke="#EC4899" stroke-width="3" fill="rgba(236, 72, 153, 0.1)" filter="url(#glow)" />
+    <line x1="26" y1="-7" x2="34" y2="2" stroke="#EC4899" stroke-width="3.5" stroke-linecap="round" filter="url(#glow)" />
+  </g>
+  <text x="480" y="260" font-family="Arial Black, sans-serif" font-size="90" font-weight="900" fill="url(#textGradient)">SOLcloser</text>
+  <text x="480" y="330" font-family="Arial, sans-serif" font-size="36" fill="#E5E7EB">Reclaim Your Locked SOL</text>
+  <text x="480" y="400" font-family="Arial, sans-serif" font-size="24" fill="#9CA3AF">Close unused token accounts and recover your rent deposits</text>
+  <text x="480" y="480" font-family="Arial, sans-serif" font-size="22" fill="#D1D5DB">⚡ Fast    🔒 Secure    💎 Transparent    🎁 10% Referral</text>
+</svg>
