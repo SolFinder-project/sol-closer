@@ -37,7 +37,7 @@ export async function closeTokenAccounts(
     }
 
     const connection = getConnection();
-    const feePercentage = Number(process.env.NEXT_PUBLIC_SERVICE_FEE_PERCENTAGE || 15);
+    const feePercentage = Number(process.env.NEXT_PUBLIC_SERVICE_FEE_PERCENTAGE || 20);
     const referralFeePercentage = Number(process.env.NEXT_PUBLIC_REFERRAL_FEE_PERCENTAGE || 10);
     const feeRecipient = new PublicKey(process.env.NEXT_PUBLIC_FEE_RECIPIENT_WALLET);
 

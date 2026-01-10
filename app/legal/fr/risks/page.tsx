@@ -148,7 +148,7 @@ export default function RiskDisclaimer() {
 
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">5.3 Frais de Transaction</h3>
             <p>
-              Outre les frais de service de SOLcloser (15%), des frais de réseau Solana s'appliquent 
+              Outre les frais de service de SOLcloser (20%), des frais de réseau Solana s'appliquent 
               à chaque transaction. Ces frais varient selon la congestion du réseau.
             </p>
           </section>

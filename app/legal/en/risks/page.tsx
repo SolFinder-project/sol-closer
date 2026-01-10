@@ -170,7 +170,7 @@ export default function RiskDisclaimer() {
 
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">5.3 Transaction Fees</h3>
             <p>
-              In addition to SOLcloser's service fee (15%), Solana network fees apply to all transactions. 
+              In addition to SOLcloser's service fee (20%), Solana network fees apply to all transactions. 
               These fees can vary based on network congestion and are not controlled by SOLcloser.
             </p>
 

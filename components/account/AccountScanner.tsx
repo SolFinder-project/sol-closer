@@ -118,7 +118,7 @@ export default function AccountScanner() {
     .filter(acc => selectedAccounts.includes(acc.pubkey.toString()))
     .reduce((sum, acc) => sum + acc.rentExemptReserve, 0);
 
-  const feePercentage = 15;
+  const feePercentage = 20;
   const feeAmount = (selectedTotal * feePercentage) / 100;
   const referralAmount = referrerWallet ? (selectedTotal * 10) / 100 : 0;
   const netAmount = selectedTotal - feeAmount;
@@ -261,7 +261,7 @@ export default function AccountScanner() {
               </div>
 
               <div className="flex justify-between p-3 rounded-lg bg-dark-bg">
-                <span className="text-gray-400">Service Fee (15%)</span>
+                <span className="text-gray-400">Service Fee (20%)</span>
                 <span className="font-bold text-orange-500 font-mono">
                   -{(feeAmount / 1e9).toFixed(6)} SOL
                 </span>

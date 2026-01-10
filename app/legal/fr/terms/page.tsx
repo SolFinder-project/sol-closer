@@ -54,7 +54,7 @@ export default function TermsOfService() {
             <ul className="list-disc pl-6 space-y-2">
               <li>L'analyse des portefeuilles connectés pour identifier les comptes de tokens vides</li>
               <li>La facilitation de la fermeture de ces comptes via des transactions blockchain</li>
-              <li>Un système de commission de 15% sur le SOL récupéré</li>
+              <li>Un système de commission de 20% sur le SOL récupéré</li>
               <li>Un programme de parrainage offrant 10% de récompenses</li>
             </ul>
           </section>
@@ -91,13 +91,13 @@ export default function TermsOfService() {
             
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">5.1 Commission de Service</h3>
             <p>
-              SOLcloser prélève une commission de 15% sur le montant de SOL récupéré lors de la fermeture 
+              SOLcloser prélève une commission de 20% sur le montant de SOL récupéré lors de la fermeture 
               des comptes de tokens. Cette commission est automatiquement déduite lors du traitement de 
               la transaction.
             </p>
             <p>
               Le montant exact de la commission est clairement affiché à l'utilisateur avant la confirmation 
-              de toute transaction. L'utilisateur recevra approximativement 85% du SOL récupéré, déduction 
+              de toute transaction. L'utilisateur recevra approximativement 80% du SOL récupéré, déduction 
               faite des frais de réseau Solana.
             </p>
 

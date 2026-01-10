@@ -41,7 +41,7 @@ export default function TermsOfService() {
             <ul className="list-disc pl-6 space-y-2">
               <li>Wallet scanning to identify empty token accounts</li>
               <li>Facilitation of account closing via blockchain transactions</li>
-              <li>A service fee of 15% on reclaimed SOL</li>
+              <li>A service fee of 20% on reclaimed SOL</li>
               <li>A referral program offering 10% rewards</li>
             </ul>
           </section>
@@ -64,12 +64,12 @@ export default function TermsOfService() {
             
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">4.1 Service Fee</h3>
             <p>
-              SOLcloser charges a service fee of 15% on all SOL reclaimed through the closing of token accounts. 
+              SOLcloser charges a service fee of 20% on all SOL reclaimed through the closing of token accounts. 
               This fee is automatically deducted during the transaction process.
             </p>
             <p>
               The exact fee amount is clearly displayed before you confirm any transaction. You will receive 
-              approximately 85% of the reclaimed SOL, minus Solana network fees.
+              approximately 80% of the reclaimed SOL, minus Solana network fees.
             </p>
 
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">4.2 Referral Program</h3>
