@@ -3,6 +3,7 @@
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useEffect, useState } from 'react';
 import { getUserStats } from '@/lib/supabase/transactions';
+import { isValidSolanaAddress } from '@/lib/solana/validators';
 
 interface ReferralStats {
   totalReferrals: number;
@@ -21,12 +22,19 @@ export function useReferral() {
       const params = new URLSearchParams(window.location.search);
       const refWallet = params.get('ref');
       
-      if (refWallet && refWallet.length >= 32) {
-        console.log('🎁 Referral wallet detected:', refWallet.slice(0, 8) + '...');
+      if (refWallet) {
+        // ✅ VALIDATION: Clean and validate referrer wallet
+        const cleanedWallet = refWallet.trim();
         
-        // Save referrer wallet to sessionStorage
-        sessionStorage.setItem('solcloser_referrer_wallet', refWallet);
-        setReferrerWallet(refWallet);
+        if (isValidSolanaAddress(cleanedWallet)) {
+          console.log('🎁 Valid referral wallet detected:', cleanedWallet.slice(0, 8) + '...');
+          
+          // Save referrer wallet to sessionStorage
+          sessionStorage.setItem('solcloser_referrer_wallet', cleanedWallet);
+          setReferrerWallet(cleanedWallet);
+        } else {
+          console.warn('⚠️ Invalid referral wallet in URL:', cleanedWallet.slice(0, 10));
+        }
         
         // Clean URL without reloading
         const url = new URL(window.location.href);
@@ -36,7 +44,13 @@ export function useReferral() {
         // Check if we have a referrer in current session
         const savedWallet = sessionStorage.getItem('solcloser_referrer_wallet');
         if (savedWallet) {
-          setReferrerWallet(savedWallet);
+          const cleanedSaved = savedWallet.trim();
+          if (isValidSolanaAddress(cleanedSaved)) {
+            setReferrerWallet(cleanedSaved);
+          } else {
+            console.warn('⚠️ Invalid saved referrer wallet, clearing');
+            sessionStorage.removeItem('solcloser_referrer_wallet');
+          }
         }
       }
     }
@@ -54,6 +68,7 @@ export function useReferral() {
         // Clear referrer if it's the same as current wallet (can't refer yourself)
         const savedReferrer = sessionStorage.getItem('solcloser_referrer_wallet');
         if (savedReferrer === walletAddress) {
+          console.log('⚠️ Cannot refer yourself, clearing referrer');
           sessionStorage.removeItem('solcloser_referrer_wallet');
           setReferrerWallet(null);
         }
@@ -91,7 +106,7 @@ export function useReferral() {
     referralCode,        // Full wallet address
     displayCode: getDisplayCode(),  // Shortened for display
     referralStats,
-    referrerWallet,      // Referrer's full wallet address
+    referrerWallet,      // Referrer's full wallet address (validated)
     getReferralLink,
   };
 }

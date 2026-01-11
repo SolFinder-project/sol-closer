@@ -11,6 +11,7 @@ import { getConnection } from './connection';
 import { TokenAccount, CloseAccountResult } from '@/types/token-account';
 import { TOKEN_PROGRAM_ID } from './constants';
 import { saveTransaction } from '@/lib/supabase/transactions';
+import { safePublicKey, cleanEnvAddress } from './validators';
 
 const BATCH_SIZE = 20;
 
@@ -39,7 +40,12 @@ export async function closeTokenAccounts(
     const connection = getConnection();
     const feePercentage = Number(process.env.NEXT_PUBLIC_SERVICE_FEE_PERCENTAGE || 20);
     const referralFeePercentage = Number(process.env.NEXT_PUBLIC_REFERRAL_FEE_PERCENTAGE || 10);
-    const feeRecipient = new PublicKey(process.env.NEXT_PUBLIC_FEE_RECIPIENT_WALLET);
+    
+    // ✅ VALIDATION: Clean and validate fee recipient address
+    const cleanedFeeRecipient = cleanEnvAddress(process.env.NEXT_PUBLIC_FEE_RECIPIENT_WALLET);
+    const feeRecipient = new PublicKey(cleanedFeeRecipient);
+    
+    console.log('✅ Fee recipient validated:', feeRecipient.toString().slice(0, 8) + '...');
 
     const batches = chunk(accounts, BATCH_SIZE);
     console.log(`📦 Processing ${accounts.length} accounts in ${batches.length} batches`);
@@ -81,8 +87,10 @@ export async function closeTokenAccounts(
         const totalFeeAmount = Math.floor(grandTotal * feePercentage / 100);
 
         if (referrerWallet && referrerWallet !== walletAdapter.publicKey.toString()) {
-          try {
-            const referrerPubkey = new PublicKey(referrerWallet);
+          // ✅ VALIDATION: Safely convert referrer wallet
+          const referrerPubkey = safePublicKey(referrerWallet);
+          
+          if (referrerPubkey && !referrerPubkey.equals(walletAdapter.publicKey)) {
             finalReferralAmount = Math.floor(grandTotal * referralFeePercentage / 100);
             const platformAmount = totalFeeAmount - finalReferralAmount;
             
@@ -102,9 +110,9 @@ export async function closeTokenAccounts(
               }));
             }
 
-            console.log(`✅ Referral: ${finalReferralAmount / 1e9} SOL to ${referrerWallet.slice(0, 8)}`);
-          } catch (error) {
-            console.error('Invalid referrer wallet:', error);
+            console.log(`✅ Referral: ${finalReferralAmount / 1e9} SOL to ${referrerWallet.slice(0, 8)}...`);
+          } else {
+            console.warn('⚠️ Invalid referrer wallet, using regular fee');
             finalReferralAmount = 0;
             transaction.add(SystemProgram.transfer({
               fromPubkey: walletAdapter.publicKey,
@@ -168,7 +176,7 @@ export async function closeTokenAccounts(
       success: true,
     };
   } catch (error: any) {
-    console.error('Error closing accounts:', error);
+    console.error('❌ Error closing accounts:', error);
     return {
       signature: '',
       accountsClosed: 0,
