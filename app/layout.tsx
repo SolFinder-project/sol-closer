@@ -78,11 +78,29 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${orbitron.variable} antialiased`}> <div style="background:#F59E0B;color:black;text-align:center;padding:12px;font-weight:bold;position:fixed;top:0;left:0;width:100%;z-index:99999;">🚧 BETA TEST PRIVÉ - Site en cours de développement - Ne pas partager</div><div style="margin-top:40px">
+      <body className={`${inter.variable} ${orbitron.variable} antialiased`}>
+        {/* BANNIÈRE BETA */}
+        <div style={{
+          backgroundColor: '#F59E0B',
+          color: 'black',
+          textAlign: 'center',
+          padding: '12px',
+          fontWeight: 'bold',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          zIndex: 99999,
+          borderBottom: '2px solid black'
+        }}>
+          🚧 BETA TEST PRIVÉ - Site en cours de développement - Ne pas partager
+        </div>
+        <div style={{ marginTop: '45px' }}>
         <Providers>
           {children}
+        </div>
         </Providers>
-      </div></body>
+      </body>
     </html>
   );
 }
