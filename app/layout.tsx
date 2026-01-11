@@ -78,11 +78,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${orbitron.variable} antialiased`}>
+      <body className={`${inter.variable} ${orbitron.variable} antialiased`}> <div style="background:#F59E0B;color:black;text-align:center;padding:12px;font-weight:bold;position:fixed;top:0;left:0;width:100%;z-index:99999;">🚧 BETA TEST PRIVÉ - Site en cours de développement - Ne pas partager</div><div style="margin-top:40px">
         <Providers>
           {children}
         </Providers>
-      </body>
+      </div></body>
     </html>
   );
 }
