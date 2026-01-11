@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, Orbitron } from "next/font/google";
 import "./globals.css";
-import { Providers } from './providers';
+import { Providers } from "./providers";
 
-import '@solana/wallet-adapter-react-ui/styles.css';
+import "@solana/wallet-adapter-react-ui/styles.css";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     siteName: "SOLcloser",
     title: "SOLcloser - Reclaim Your Locked SOL",
-    description: "Close unused SPL token accounts and recover your rent deposits on Solana. Fast, secure, transparent.",
+    description: "Close unused SPL token accounts and recover your rent deposits on Solana. Fast, secure, and transparent.",
     images: [
       {
         url: "/og-image.png",
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "SOLcloser - Reclaim Your Locked SOL",
-    description: "Close unused SPL token accounts and recover your rent deposits on Solana. Fast, secure, transparent.",
+    description: "Close unused SPL token accounts and recover your rent deposits on Solana. Fast, secure, and transparent.",
     images: ["/og-image.png"],
   },
   icons: {
@@ -95,10 +95,12 @@ export default function RootLayout({
         }}>
           🚧 BETA TEST PRIVÉ - Site en cours de développement - Ne pas partager
         </div>
-        <div style={{ marginTop: '45px' }}>
+
         <Providers>
-          {children}
-        </div>
+            {/* PADDING pour la bannière */}
+            <div style={{ marginTop: '45px' }}>
+              {children}
+            </div>
         </Providers>
       </body>
     </html>
