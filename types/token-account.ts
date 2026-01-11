@@ -3,23 +3,9 @@ import { PublicKey } from '@solana/web3.js';
 export interface TokenAccount {
   pubkey: PublicKey;
   mint: PublicKey;
-  owner: PublicKey;
-  amount: bigint;
-  tokenAmount: {
-    amount: string;
-    decimals: number;
-    uiAmount: number | null;
-  };
+  balance: number;
   rentExemptReserve: number;
-  isCloseable: boolean;
-}
-
-export interface ScanResult {
-  totalAccounts: number;
-  closeableAccounts: TokenAccount[];
-  totalReclaimable: number;
-  estimatedFee: number;
-  netRecovery: number;
+  programId: PublicKey; // ⭐ Nouveau champ
 }
 
 export interface CloseAccountResult {

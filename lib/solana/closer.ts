@@ -6,10 +6,11 @@ import {
 } from '@solana/web3.js';
 import { 
   createCloseAccountInstruction,
+  TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
 } from '@solana/spl-token';
 import { getConnection } from './connection';
 import { TokenAccount, CloseAccountResult } from '@/types/token-account';
-import { TOKEN_PROGRAM_ID } from './constants';
 import { saveTransaction } from '@/lib/supabase/transactions';
 import { safePublicKey, cleanEnvAddress } from './validators';
 
@@ -41,7 +42,6 @@ export async function closeTokenAccounts(
     const feePercentage = Number(process.env.NEXT_PUBLIC_SERVICE_FEE_PERCENTAGE || 20);
     const referralFeePercentage = Number(process.env.NEXT_PUBLIC_REFERRAL_FEE_PERCENTAGE || 10);
     
-    // ✅ VALIDATION: Clean and validate fee recipient address
     const cleanedFeeRecipient = cleanEnvAddress(process.env.NEXT_PUBLIC_FEE_RECIPIENT_WALLET);
     const feeRecipient = new PublicKey(cleanedFeeRecipient);
     
@@ -70,12 +70,17 @@ export async function closeTokenAccounts(
       let batchReclaimable = 0;
 
       for (const account of batch) {
+        // ⭐ CORRECTION: Utiliser le bon program ID pour chaque compte
+        const programId = account.programId || TOKEN_PROGRAM_ID;
+        
+        console.log(`  Closing ${account.pubkey.toString().slice(0, 8)}... with program ${programId.toString().slice(0, 8)}...`);
+        
         const closeInstruction = createCloseAccountInstruction(
           account.pubkey,
           walletAdapter.publicKey,
           walletAdapter.publicKey,
           [],
-          TOKEN_PROGRAM_ID
+          programId // ⭐ Utiliser le program ID correct
         );
         transaction.add(closeInstruction);
         batchReclaimable += account.rentExemptReserve;
@@ -87,7 +92,6 @@ export async function closeTokenAccounts(
         const totalFeeAmount = Math.floor(grandTotal * feePercentage / 100);
 
         if (referrerWallet && referrerWallet !== walletAdapter.publicKey.toString()) {
-          // ✅ VALIDATION: Safely convert referrer wallet
           const referrerPubkey = safePublicKey(referrerWallet);
           
           if (referrerPubkey && !referrerPubkey.equals(walletAdapter.publicKey)) {
