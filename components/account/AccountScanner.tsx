@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { scanWallet } from '@/lib/solana/scanner';
 import { closeTokenAccounts } from '@/lib/solana/closer';
 import { TokenAccount } from '@/types/token-account';
 import { useReferral } from '@/hooks/useReferral';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 export default function AccountScanner() {
   const { publicKey, signTransaction } = useWallet();
+  const { connection } = useConnection();
   const { referrerWallet } = useReferral();
   const [accounts, setAccounts] = useState<TokenAccount[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
@@ -16,14 +18,22 @@ export default function AccountScanner() {
   const [isClosing, setIsClosing] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+  const [walletBalance, setWalletBalance] = useState<number>(0);
 
-  // Debug referral
   useEffect(() => {
     console.log('🔍 Referral Debug:', {
       referrerWallet,
       hasReferrer: !!referrerWallet,
     });
   }, [referrerWallet]);
+
+  useEffect(() => {
+    if (publicKey) {
+      connection.getBalance(publicKey).then(balance => {
+        setWalletBalance(balance / LAMPORTS_PER_SOL);
+      });
+    }
+  }, [publicKey, connection]);
 
   const handleScan = async () => {
     if (!publicKey) {
@@ -72,6 +82,12 @@ export default function AccountScanner() {
       return;
     }
 
+    const MIN_SOL_REQUIRED = 0.001;
+    if (walletBalance < MIN_SOL_REQUIRED) {
+      setError(`⚠️ You need at least ${MIN_SOL_REQUIRED} SOL in your wallet to pay for network transaction fees. Please add some SOL first.`);
+      return;
+    }
+
     setIsClosing(true);
     setError('');
     setSuccess('');
@@ -103,6 +119,9 @@ export default function AccountScanner() {
         setSuccess(successMsg);
         await handleScan();
         setSelectedAccounts([]);
+        
+        const newBalance = await connection.getBalance(publicKey);
+        setWalletBalance(newBalance / LAMPORTS_PER_SOL);
       } else {
         setError(result.error || 'Failed to close accounts');
       }
@@ -119,14 +138,17 @@ export default function AccountScanner() {
     .reduce((sum, acc) => sum + acc.rentExemptReserve, 0);
 
   const feePercentage = 20;
+  const referralPercentage = 10;
   const feeAmount = (selectedTotal * feePercentage) / 100;
-  const referralAmount = referrerWallet ? (selectedTotal * 10) / 100 : 0;
-const netAmount = selectedTotal - feeAmount - referralAmount;
+  const referralAmount = referrerWallet ? (selectedTotal * referralPercentage) / 100 : 0;
+  const netAmount = selectedTotal - feeAmount - referralAmount;
 
-  // Format referrer display
   const referrerDisplay = referrerWallet 
     ? `${referrerWallet.slice(0, 4)}...${referrerWallet.slice(-4)}`
     : null;
+
+  const MIN_SOL = 0.001;
+  const needsMoreSOL = walletBalance < MIN_SOL;
 
   if (!publicKey) {
     return (
@@ -139,7 +161,26 @@ const netAmount = selectedTotal - feeAmount - referralAmount;
 
   return (
     <div className="space-y-6">
-      {/* Referral banner */}
+      {needsMoreSOL && accounts.length > 0 && (
+        <div className="card-cyber border-orange-500/50 bg-orange-500/10">
+          <div className="flex items-center gap-3">
+            <div className="text-4xl">⚠️</div>
+            <div className="flex-1">
+              <p className="text-xl font-bold text-orange-400 mb-2">Insufficient SOL</p>
+              <p className="text-sm text-gray-300 mb-2">
+                Your wallet has <strong>{walletBalance.toFixed(6)} SOL</strong>. You need at least <strong>{MIN_SOL} SOL</strong> to pay Solana network fees.
+              </p>
+              <div className="bg-dark-bg p-3 rounded-lg border border-orange-500/30 mt-3">
+                <p className="text-xs text-gray-400 mb-1">💡 <strong>Why?</strong></p>
+                <p className="text-xs text-gray-300">
+                  Solana requires transaction fees (~0.001 SOL). <strong className="text-neon-green">Service fees (20%) and referral (10%) are deducted from claimed SOL</strong> - you don't pay those!
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {referrerWallet && (
         <div className="card-cyber border-neon-green/50 bg-gradient-to-r from-neon-green/10 to-transparent animate-slide-up">
           <div className="flex items-center gap-3">
@@ -271,7 +312,7 @@ const netAmount = selectedTotal - feeAmount - referralAmount;
                 <div className="flex justify-between p-3 rounded-lg bg-neon-green/10 border border-neon-green/30">
                   <span className="text-neon-green font-semibold">🎁 Referrer Bonus (10%)</span>
                   <span className="font-bold text-neon-green font-mono">
--{(referralAmount / 1e9).toFixed(6)} SOL
+                    -{(referralAmount / 1e9).toFixed(6)} SOL
                   </span>
                 </div>
               )}
@@ -285,15 +326,15 @@ const netAmount = selectedTotal - feeAmount - referralAmount;
             </div>
 
             <p className="text-xs text-gray-500 text-center mt-4">
-              💡 Service fee helps maintain and improve SOLcloser
+              💡 Service fees deducted from claimed SOL. You only pay network fees (~0.001 SOL).
             </p>
 
             <button
               onClick={handleClose}
-              disabled={isClosing || selectedAccounts.length === 0}
+              disabled={isClosing || selectedAccounts.length === 0 || needsMoreSOL}
               className="btn-cyber w-full mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isClosing ? '⏳ Closing...' : `🔓 Close ${selectedAccounts.length} Account${selectedAccounts.length !== 1 ? 's' : ''}`}
+              {isClosing ? '⏳ Closing...' : needsMoreSOL ? `⚠️ Need ${MIN_SOL} SOL` : `🔓 Close ${selectedAccounts.length} Account${selectedAccounts.length !== 1 ? 's' : ''}`}
             </button>
           </div>
         </>
