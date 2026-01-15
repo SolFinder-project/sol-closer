@@ -47,12 +47,17 @@ export async function closeTokenAccounts(
     
     console.log('✅ Fee recipient validated:', feeRecipient.toString().slice(0, 8) + '...');
 
+    // ⭐ PAS DE VALIDATION - Juste vérifier que c'est une adresse valide
     let validReferrerPubkey: PublicKey | null = null;
     if (referrerWallet && referrerWallet !== walletAdapter.publicKey.toString()) {
-      const referrerPubkey = safePublicKey(referrerWallet);
-      if (referrerPubkey && !referrerPubkey.equals(walletAdapter.publicKey)) {
-        validReferrerPubkey = referrerPubkey;
-        console.log(`✅ Referrer validated: ${referrerWallet.slice(0, 8)}...`);
+      try {
+        const referrerPubkey = safePublicKey(referrerWallet);
+        if (referrerPubkey && !referrerPubkey.equals(walletAdapter.publicKey)) {
+          validReferrerPubkey = referrerPubkey;
+          console.log(`✅ Referrer: ${referrerWallet.slice(0, 8)}...`);
+        }
+      } catch (e) {
+        console.warn('⚠️ Invalid referrer address');
       }
     }
 
@@ -66,25 +71,25 @@ export async function closeTokenAccounts(
 
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
-      console.log(`🔄 Processing batch ${i + 1}/${batches.length} (${batch.length} accounts)`);
+      console.log(`🔄 Batch ${i + 1}/${batches.length} (${batch.length} accounts)`);
 
       const transaction = new Transaction();
       transaction.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }));
 
       let batchReclaimable = 0;
 
+      // ⭐ Fermer les comptes
       for (const account of batch) {
         const programId = account.programId || TOKEN_PROGRAM_ID;
-        console.log(`  Closing ${account.pubkey.toString().slice(0, 8)}... with program ${programId.toString().slice(0, 8)}...`);
+        console.log(`  Closing ${account.pubkey.toString().slice(0, 8)}...`);
         
-        const closeInstruction = createCloseAccountInstruction(
+        transaction.add(createCloseAccountInstruction(
           account.pubkey,
           walletAdapter.publicKey,
           walletAdapter.publicKey,
           [],
           programId
-        );
-        transaction.add(closeInstruction);
+        ));
         batchReclaimable += account.rentExemptReserve;
       }
 
@@ -92,6 +97,7 @@ export async function closeTokenAccounts(
       const batchFeeAmount = Math.floor(batchReclaimable * feePercentage / 100);
       const batchReferralAmount = validReferrerPubkey ? Math.floor(batchReclaimable * referralFeePercentage / 100) : 0;
 
+      // ⭐ Transférer les frais (le SOL est maintenant disponible après les closes)
       if (batchFeeAmount > 0) {
         transaction.add(SystemProgram.transfer({
           fromPubkey: walletAdapter.publicKey,
@@ -126,11 +132,11 @@ export async function closeTokenAccounts(
     }
 
     const solReclaimed = totalReclaimable / 1e9;
-    const totalFeeAmount = Math.floor((totalReclaimable * feePercentage) / 100);
-    const totalFeesPaid = totalFeeAmount + finalReferralAmount;
-    const fee = totalFeesPaid / 1e9;
-    const netReceived = solReclaimed - fee;
-    const referralEarnedSol = finalReferralAmount / 1e9;
+    const totalFeeAmount = Math.floor(totalReclaimable * feePercentage / 100);
+    const totalFeesPaid = (totalFeeAmount + finalReferralAmount) / 1e9;
+    const netReceived = solReclaimed - totalFeesPaid;
+
+    console.log(`🎉 Total: ${solReclaimed} SOL | Net: ${netReceived} SOL | Fees: ${totalFeesPaid} SOL`);
 
     try {
       await saveTransaction({
@@ -138,15 +144,14 @@ export async function closeTokenAccounts(
         wallet_address: walletAdapter.publicKey.toString(),
         accounts_closed: totalAccountsClosed,
         sol_reclaimed: solReclaimed,
-        fee,
+        fee: totalFeesPaid,
         net_received: netReceived,
         referrer_code: referrerWallet || undefined,
-        referral_earned: referralEarnedSol > 0 ? referralEarnedSol : undefined,
+        referral_earned: finalReferralAmount > 0 ? finalReferralAmount / 1e9 : undefined,
         timestamp: Date.now(),
       });
-      console.log('✅ Transaction saved to Supabase');
     } catch (supabaseError) {
-      console.error('⚠️ Failed to save to Supabase:', supabaseError);
+      console.error('⚠️ Supabase error:', supabaseError);
     }
 
     return {
@@ -156,7 +161,7 @@ export async function closeTokenAccounts(
       success: true,
     };
   } catch (error: any) {
-    console.error('❌ Error closing accounts:', error);
+    console.error('❌ Error:', error);
     return {
       signature: '',
       accountsClosed: 0,
