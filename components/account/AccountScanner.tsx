@@ -121,7 +121,7 @@ export default function AccountScanner() {
   const feePercentage = 20;
   const feeAmount = (selectedTotal * feePercentage) / 100;
   const referralAmount = referrerWallet ? (selectedTotal * 10) / 100 : 0;
-  const netAmount = selectedTotal - feeAmount;
+const netAmount = selectedTotal - feeAmount - referralAmount;
 
   // Format referrer display
   const referrerDisplay = referrerWallet 
@@ -271,7 +271,7 @@ export default function AccountScanner() {
                 <div className="flex justify-between p-3 rounded-lg bg-neon-green/10 border border-neon-green/30">
                   <span className="text-neon-green font-semibold">🎁 Referrer Bonus (10%)</span>
                   <span className="font-bold text-neon-green font-mono">
-                    {(referralAmount / 1e9).toFixed(6)} SOL
+-{(referralAmount / 1e9).toFixed(6)} SOL
                   </span>
                 </div>
               )}
