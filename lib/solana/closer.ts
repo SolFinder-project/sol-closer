@@ -14,7 +14,7 @@ import { TokenAccount, CloseAccountResult } from '@/types/token-account';
 import { saveTransaction } from '@/lib/supabase/transactions';
 import { safePublicKey, cleanEnvAddress } from './validators';
 
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 10;
 
 function chunk<T>(array: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -47,6 +47,15 @@ export async function closeTokenAccounts(
     
     console.log('✅ Fee recipient validated:', feeRecipient.toString().slice(0, 8) + '...');
 
+    let validReferrerPubkey: PublicKey | null = null;
+    if (referrerWallet && referrerWallet !== walletAdapter.publicKey.toString()) {
+      const referrerPubkey = safePublicKey(referrerWallet);
+      if (referrerPubkey && !referrerPubkey.equals(walletAdapter.publicKey)) {
+        validReferrerPubkey = referrerPubkey;
+        console.log(`✅ Referrer validated: ${referrerWallet.slice(0, 8)}...`);
+      }
+    }
+
     const batches = chunk(accounts, BATCH_SIZE);
     console.log(`📦 Processing ${accounts.length} accounts in ${batches.length} batches`);
 
@@ -54,36 +63,18 @@ export async function closeTokenAccounts(
     let totalReclaimable = 0;
     let allSignatures: string[] = [];
     let finalReferralAmount = 0;
-    let validReferrerPubkey: PublicKey | null = null;
-
-    // ⭐ VALIDATION DU REFERRER AVANT LA TRANSACTION
-    if (referrerWallet && referrerWallet !== walletAdapter.publicKey.toString()) {
-      const referrerPubkey = safePublicKey(referrerWallet);
-      if (referrerPubkey && !referrerPubkey.equals(walletAdapter.publicKey)) {
-        validReferrerPubkey = referrerPubkey;
-        console.log(`✅ Referrer validated: ${referrerWallet.slice(0, 8)}...`);
-      } else {
-        console.warn('⚠️ Invalid referrer wallet - referral disabled');
-      }
-    }
 
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
       console.log(`🔄 Processing batch ${i + 1}/${batches.length} (${batch.length} accounts)`);
 
       const transaction = new Transaction();
-
-      transaction.add(
-        ComputeBudgetProgram.setComputeUnitLimit({
-          units: 300_000,
-        })
-      );
+      transaction.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }));
 
       let batchReclaimable = 0;
 
       for (const account of batch) {
         const programId = account.programId || TOKEN_PROGRAM_ID;
-        
         console.log(`  Closing ${account.pubkey.toString().slice(0, 8)}... with program ${programId.toString().slice(0, 8)}...`);
         
         const closeInstruction = createCloseAccountInstruction(
@@ -97,34 +88,27 @@ export async function closeTokenAccounts(
         batchReclaimable += account.rentExemptReserve;
       }
 
-      // Fees sur le dernier batch seulement
-      if (i === batches.length - 1) {
-        const grandTotal = totalReclaimable + batchReclaimable;
-        const totalFeeAmount = Math.floor(grandTotal * feePercentage / 100);
+      totalReclaimable += batchReclaimable;
+      const batchFeeAmount = Math.floor(batchReclaimable * feePercentage / 100);
+      const batchReferralAmount = validReferrerPubkey ? Math.floor(batchReclaimable * referralFeePercentage / 100) : 0;
 
-        // ⭐ ENVOI DES FRAIS PLATEFORME (TOUJOURS 20%)
-        if (totalFeeAmount > 0) {
-          transaction.add(SystemProgram.transfer({
-            fromPubkey: walletAdapter.publicKey,
-            toPubkey: feeRecipient,
-            lamports: totalFeeAmount,
-          }));
-          console.log(`💰 Platform: ${totalFeeAmount / 1e9} SOL`);
-        }
+      if (batchFeeAmount > 0) {
+        transaction.add(SystemProgram.transfer({
+          fromPubkey: walletAdapter.publicKey,
+          toPubkey: feeRecipient,
+          lamports: batchFeeAmount,
+        }));
+        console.log(`  💰 Platform: ${batchFeeAmount / 1e9} SOL`);
+      }
 
-        // ⭐ ENVOI DU REFERRAL BONUS (10% SI VALIDE)
-        if (validReferrerPubkey) {
-          finalReferralAmount = Math.floor(grandTotal * referralFeePercentage / 100);
-          
-          if (finalReferralAmount > 0) {
-            transaction.add(SystemProgram.transfer({
-              fromPubkey: walletAdapter.publicKey,
-              toPubkey: validReferrerPubkey,
-              lamports: finalReferralAmount,
-            }));
-            console.log(`🎁 Referral: ${finalReferralAmount / 1e9} SOL to ${referrerWallet?.slice(0, 8)}...`);
-          }
-        }
+      if (batchReferralAmount > 0 && validReferrerPubkey) {
+        transaction.add(SystemProgram.transfer({
+          fromPubkey: walletAdapter.publicKey,
+          toPubkey: validReferrerPubkey,
+          lamports: batchReferralAmount,
+        }));
+        finalReferralAmount += batchReferralAmount;
+        console.log(`  🎁 Referral: ${batchReferralAmount / 1e9} SOL`);
       }
 
       const { blockhash } = await connection.getLatestBlockhash();
@@ -133,11 +117,9 @@ export async function closeTokenAccounts(
 
       const signed = await walletAdapter.signTransaction(transaction);
       const signature = await connection.sendRawTransaction(signed.serialize());
-
       await connection.confirmTransaction(signature, 'confirmed');
 
       totalAccountsClosed += batch.length;
-      totalReclaimable += batchReclaimable;
       allSignatures.push(signature);
 
       console.log(`✅ Batch ${i + 1} complete: ${signature.slice(0, 8)}...`);
@@ -150,7 +132,6 @@ export async function closeTokenAccounts(
     const netReceived = solReclaimed - fee;
     const referralEarnedSol = finalReferralAmount / 1e9;
 
-    // Save to Supabase
     try {
       await saveTransaction({
         signature: allSignatures[0],
