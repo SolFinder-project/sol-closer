@@ -70,7 +70,6 @@ export async function closeTokenAccounts(
       let batchReclaimable = 0;
 
       for (const account of batch) {
-        // ⭐ CORRECTION: Utiliser le bon program ID pour chaque compte
         const programId = account.programId || TOKEN_PROGRAM_ID;
         
         console.log(`  Closing ${account.pubkey.toString().slice(0, 8)}... with program ${programId.toString().slice(0, 8)}...`);
@@ -80,7 +79,7 @@ export async function closeTokenAccounts(
           walletAdapter.publicKey,
           walletAdapter.publicKey,
           [],
-          programId // ⭐ Utiliser le program ID correct
+          programId
         );
         transaction.add(closeInstruction);
         batchReclaimable += account.rentExemptReserve;
@@ -96,7 +95,8 @@ export async function closeTokenAccounts(
           
           if (referrerPubkey && !referrerPubkey.equals(walletAdapter.publicKey)) {
             finalReferralAmount = Math.floor(grandTotal * referralFeePercentage / 100);
-            const platformAmount = totalFeeAmount - finalReferralAmount;
+            // ⭐ CORRECTION: Ne pas déduire le referral de la plateforme
+            const platformAmount = totalFeeAmount; // Garder 20% complet pour la plateforme
             
             if (platformAmount > 0) {
               transaction.add(SystemProgram.transfer({
@@ -114,7 +114,7 @@ export async function closeTokenAccounts(
               }));
             }
 
-            console.log(`✅ Referral: ${finalReferralAmount / 1e9} SOL to ${referrerWallet.slice(0, 8)}...`);
+            console.log(`✅ Platform: ${platformAmount / 1e9} SOL | Referral: ${finalReferralAmount / 1e9} SOL to ${referrerWallet.slice(0, 8)}...`);
           } else {
             console.warn('⚠️ Invalid referrer wallet, using regular fee');
             finalReferralAmount = 0;
@@ -150,8 +150,10 @@ export async function closeTokenAccounts(
     }
 
     const solReclaimed = totalReclaimable / 1e9;
+    // ⭐ CORRECTION: Calculer le total des frais payés (plateforme + referral)
     const totalFeeAmount = Math.floor((totalReclaimable * feePercentage) / 100);
-    const fee = totalFeeAmount / 1e9;
+    const totalFeesPaid = totalFeeAmount + finalReferralAmount;
+    const fee = totalFeesPaid / 1e9;
     const netReceived = solReclaimed - fee;
     const referralEarnedSol = finalReferralAmount / 1e9;
 
