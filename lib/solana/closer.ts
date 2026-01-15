@@ -54,6 +54,18 @@ export async function closeTokenAccounts(
     let totalReclaimable = 0;
     let allSignatures: string[] = [];
     let finalReferralAmount = 0;
+    let validReferrerPubkey: PublicKey | null = null;
+
+    // ⭐ VALIDATION DU REFERRER AVANT LA TRANSACTION
+    if (referrerWallet && referrerWallet !== walletAdapter.publicKey.toString()) {
+      const referrerPubkey = safePublicKey(referrerWallet);
+      if (referrerPubkey && !referrerPubkey.equals(walletAdapter.publicKey)) {
+        validReferrerPubkey = referrerPubkey;
+        console.log(`✅ Referrer validated: ${referrerWallet.slice(0, 8)}...`);
+      } else {
+        console.warn('⚠️ Invalid referrer wallet - referral disabled');
+      }
+    }
 
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
@@ -90,46 +102,28 @@ export async function closeTokenAccounts(
         const grandTotal = totalReclaimable + batchReclaimable;
         const totalFeeAmount = Math.floor(grandTotal * feePercentage / 100);
 
-        if (referrerWallet && referrerWallet !== walletAdapter.publicKey.toString()) {
-          const referrerPubkey = safePublicKey(referrerWallet);
-          
-          if (referrerPubkey && !referrerPubkey.equals(walletAdapter.publicKey)) {
-            finalReferralAmount = Math.floor(grandTotal * referralFeePercentage / 100);
-            // ⭐ CORRECTION: Ne pas déduire le referral de la plateforme
-            const platformAmount = totalFeeAmount; // Garder 20% complet pour la plateforme
-            
-            if (platformAmount > 0) {
-              transaction.add(SystemProgram.transfer({
-                fromPubkey: walletAdapter.publicKey,
-                toPubkey: feeRecipient,
-                lamports: platformAmount,
-              }));
-            }
-            
-            if (finalReferralAmount > 0) {
-              transaction.add(SystemProgram.transfer({
-                fromPubkey: walletAdapter.publicKey,
-                toPubkey: referrerPubkey,
-                lamports: finalReferralAmount,
-              }));
-            }
-
-            console.log(`✅ Platform: ${platformAmount / 1e9} SOL | Referral: ${finalReferralAmount / 1e9} SOL to ${referrerWallet.slice(0, 8)}...`);
-          } else {
-            console.warn('⚠️ Invalid referrer wallet, using regular fee');
-            finalReferralAmount = 0;
-            transaction.add(SystemProgram.transfer({
-              fromPubkey: walletAdapter.publicKey,
-              toPubkey: feeRecipient,
-              lamports: totalFeeAmount,
-            }));
-          }
-        } else {
+        // ⭐ ENVOI DES FRAIS PLATEFORME (TOUJOURS 20%)
+        if (totalFeeAmount > 0) {
           transaction.add(SystemProgram.transfer({
             fromPubkey: walletAdapter.publicKey,
             toPubkey: feeRecipient,
             lamports: totalFeeAmount,
           }));
+          console.log(`💰 Platform: ${totalFeeAmount / 1e9} SOL`);
+        }
+
+        // ⭐ ENVOI DU REFERRAL BONUS (10% SI VALIDE)
+        if (validReferrerPubkey) {
+          finalReferralAmount = Math.floor(grandTotal * referralFeePercentage / 100);
+          
+          if (finalReferralAmount > 0) {
+            transaction.add(SystemProgram.transfer({
+              fromPubkey: walletAdapter.publicKey,
+              toPubkey: validReferrerPubkey,
+              lamports: finalReferralAmount,
+            }));
+            console.log(`🎁 Referral: ${finalReferralAmount / 1e9} SOL to ${referrerWallet?.slice(0, 8)}...`);
+          }
         }
       }
 
@@ -150,7 +144,6 @@ export async function closeTokenAccounts(
     }
 
     const solReclaimed = totalReclaimable / 1e9;
-    // ⭐ CORRECTION: Calculer le total des frais payés (plateforme + referral)
     const totalFeeAmount = Math.floor((totalReclaimable * feePercentage) / 100);
     const totalFeesPaid = totalFeeAmount + finalReferralAmount;
     const fee = totalFeesPaid / 1e9;
