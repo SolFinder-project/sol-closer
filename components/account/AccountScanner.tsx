@@ -21,20 +21,32 @@ export default function AccountScanner() {
   const [warning, setWarning] = useState<string>('');
   const [walletBalance, setWalletBalance] = useState<number>(0);
 
+  // 🔧 CORRECTION : Reset complet quand le wallet change
   useEffect(() => {
-    console.log('🔍 Referral Debug:', {
-      referrerWallet,
-      hasReferrer: !!referrerWallet,
-    });
-  }, [referrerWallet]);
+    // Réinitialiser tous les états quand publicKey change
+    setAccounts([]);
+    setSelectedAccounts([]);
+    setError('');
+    setSuccess('');
+    setWarning('');
+    setWalletBalance(0);
+    setIsScanning(false);
+    setIsClosing(false);
 
-  useEffect(() => {
+    // Si un wallet est connecté, récupérer son solde
     if (publicKey) {
       connection.getBalance(publicKey).then(balance => {
         setWalletBalance(balance / LAMPORTS_PER_SOL);
       });
     }
   }, [publicKey, connection]);
+
+  useEffect(() => {
+    console.log('🔍 Referral Debug:', {
+      referrerWallet,
+      hasReferrer: !!referrerWallet,
+    });
+  }, [referrerWallet]);
 
   const handleScan = async () => {
     if (!publicKey) {
@@ -45,6 +57,7 @@ export default function AccountScanner() {
     setIsScanning(true);
     setError('');
     setWarning('');
+    setSuccess(''); // 🔧 Reset success aussi au scan
     setAccounts([]);
     setSelectedAccounts([]);
 
