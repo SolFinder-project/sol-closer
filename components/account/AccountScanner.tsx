@@ -18,6 +18,7 @@ export default function AccountScanner() {
   const [isClosing, setIsClosing] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+  const [warning, setWarning] = useState<string>('');
   const [walletBalance, setWalletBalance] = useState<number>(0);
 
   useEffect(() => {
@@ -43,6 +44,7 @@ export default function AccountScanner() {
 
     setIsScanning(true);
     setError('');
+    setWarning('');
     setAccounts([]);
     setSelectedAccounts([]);
 
@@ -91,6 +93,7 @@ export default function AccountScanner() {
     setIsClosing(true);
     setError('');
     setSuccess('');
+    setWarning('');
 
     try {
       const accountsToClose = accounts.filter(acc =>
@@ -111,12 +114,17 @@ export default function AccountScanner() {
       if (result.success) {
         let successMsg = `Successfully closed ${result.accountsClosed} accounts! Reclaimed ${result.solReclaimed.toFixed(6)} SOL`;
         
-        if (referrerWallet) {
+        if (referrerWallet && !result.warningMessage) {
           const shortReferrer = `${referrerWallet.slice(0, 4)}...${referrerWallet.slice(-4)}`;
           successMsg += ` | 🎁 10% bonus sent to your referrer (${shortReferrer})!`;
         }
         
         setSuccess(successMsg);
+        
+        if (result.warningMessage) {
+          setWarning(result.warningMessage);
+        }
+        
         await handleScan();
         setSelectedAccounts([]);
         
@@ -219,6 +227,21 @@ export default function AccountScanner() {
       {error && (
         <div className="card-cyber border-red-500/50 bg-red-500/10">
           <p className="text-red-400">{error}</p>
+        </div>
+      )}
+
+      {warning && (
+        <div className="card-cyber border-orange-500/50 bg-orange-500/10">
+          <div className="flex items-center gap-3">
+            <div className="text-2xl">⚠️</div>
+            <div>
+              <p className="text-lg font-bold text-orange-400">Referral Not Applied</p>
+              <p className="text-sm text-gray-300">{warning}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                💡 Your referrer needs to initialize their wallet by receiving any amount of SOL first.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
