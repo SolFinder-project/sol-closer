@@ -57,7 +57,6 @@ export default function AccountScanner() {
     setIsScanning(true);
     setError('');
     setWarning('');
-    setSuccess(''); // 🔧 Reset success aussi au scan
     setAccounts([]);
     setSelectedAccounts([]);
 
@@ -140,7 +139,10 @@ export default function AccountScanner() {
         }
         
         setSuccess(successMsg);
-        await handleScan();
+        
+        // 🔧 Rescan en arrière-plan sans effacer le message de succès
+        const newAccounts = await scanWallet(publicKey);
+        setAccounts(newAccounts);
         setSelectedAccounts([]);
         
         const newBalance = await connection.getBalance(publicKey);
