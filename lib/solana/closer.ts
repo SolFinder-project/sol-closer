@@ -47,17 +47,26 @@ export async function closeTokenAccounts(
     
     console.log('✅ Fee recipient validated:', feeRecipient.toString().slice(0, 8) + '...');
 
-    // ⭐ PAS DE VALIDATION - Juste vérifier que c'est une adresse valide
     let validReferrerPubkey: PublicKey | null = null;
+    let referralDisabledReason: string | null = null;
+
     if (referrerWallet && referrerWallet !== walletAdapter.publicKey.toString()) {
       try {
         const referrerPubkey = safePublicKey(referrerWallet);
         if (referrerPubkey && !referrerPubkey.equals(walletAdapter.publicKey)) {
-          validReferrerPubkey = referrerPubkey;
-          console.log(`✅ Referrer: ${referrerWallet.slice(0, 8)}...`);
+          const accountInfo = await connection.getAccountInfo(referrerPubkey);
+          
+          if (accountInfo === null) {
+            console.warn('⚠️ Referrer wallet not initialized - referral disabled');
+            referralDisabledReason = 'Referrer wallet not initialized. They need to receive at least 0.00000001 SOL first.';
+          } else {
+            validReferrerPubkey = referrerPubkey;
+            console.log(`✅ Referrer: ${referrerWallet.slice(0, 8)}...`);
+          }
         }
       } catch (e) {
         console.warn('⚠️ Invalid referrer address');
+        referralDisabledReason = 'Invalid referrer address.';
       }
     }
 
@@ -78,7 +87,6 @@ export async function closeTokenAccounts(
 
       let batchReclaimable = 0;
 
-      // ⭐ Fermer les comptes
       for (const account of batch) {
         const programId = account.programId || TOKEN_PROGRAM_ID;
         console.log(`  Closing ${account.pubkey.toString().slice(0, 8)}...`);
@@ -97,7 +105,6 @@ export async function closeTokenAccounts(
       const batchFeeAmount = Math.floor(batchReclaimable * feePercentage / 100);
       const batchReferralAmount = validReferrerPubkey ? Math.floor(batchReclaimable * referralFeePercentage / 100) : 0;
 
-      // ⭐ Transférer les frais (le SOL est maintenant disponible après les closes)
       if (batchFeeAmount > 0) {
         transaction.add(SystemProgram.transfer({
           fromPubkey: walletAdapter.publicKey,
@@ -138,6 +145,10 @@ export async function closeTokenAccounts(
 
     console.log(`🎉 Total: ${solReclaimed} SOL | Net: ${netReceived} SOL | Fees: ${totalFeesPaid} SOL`);
 
+    if (referralDisabledReason) {
+      console.warn(`⚠️ Referral disabled: ${referralDisabledReason}`);
+    }
+
     try {
       await saveTransaction({
         signature: allSignatures[0],
@@ -146,7 +157,7 @@ export async function closeTokenAccounts(
         sol_reclaimed: solReclaimed,
         fee: totalFeesPaid,
         net_received: netReceived,
-        referrer_code: referrerWallet || undefined,
+        referrer_code: validReferrerPubkey ? referrerWallet : undefined,
         referral_earned: finalReferralAmount > 0 ? finalReferralAmount / 1e9 : undefined,
         timestamp: Date.now(),
       });
@@ -159,6 +170,7 @@ export async function closeTokenAccounts(
       accountsClosed: totalAccountsClosed,
       solReclaimed: netReceived,
       success: true,
+      warningMessage: referralDisabledReason || undefined,
     };
   } catch (error: any) {
     console.error('❌ Error:', error);

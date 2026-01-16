@@ -14,4 +14,5 @@ export interface CloseAccountResult {
   solReclaimed: number;
   success: boolean;
   error?: string;
+  warningMessage?: string;
 }
