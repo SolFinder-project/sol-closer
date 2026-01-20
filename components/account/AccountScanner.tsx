@@ -212,7 +212,7 @@ export default function AccountScanner() {
         <div className="card-cyber border-neon-green/50 bg-gradient-to-r from-neon-green/10 to-transparent animate-slide-up">
           <div className="flex items-center gap-3">
             <div className="text-3xl animate-pulse">🎁</div>
-            <div>
+            <div className="flex-1">
               <p className="text-lg font-bold text-neon-green">Referral Active!</p>
               <p className="text-sm text-gray-300">
                 Your referrer will receive 10% of recovered SOL
@@ -220,6 +220,11 @@ export default function AccountScanner() {
               <p className="text-xs text-gray-500 mt-1 font-mono">
                 Referrer: {referrerDisplay}
               </p>
+              <div className="mt-2 p-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                <p className="text-xs text-orange-300">
+                  ⚠️ <strong>Note:</strong> Referrer wallet must have at least 0.000001 SOL to receive the bonus
+                </p>
+              </div>
             </div>
           </div>
         </div>
