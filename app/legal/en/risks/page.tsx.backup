@@ -273,7 +273,7 @@ export default function RiskDisclaimer() {
             </p>
             <div className="p-4 bg-dark-card border border-dark-border rounded-lg mt-4">
               <p>
-                <strong>Email:</strong> solcloser@gmail.com<br />
+                <strong>Email:</strong> [TO BE COMPLETED]<br />
                 <strong>GitHub:</strong> <a href="https://github.com/SolFinder-project/sol-closer" className="text-neon-pink hover:underline" target="_blank" rel="noopener noreferrer">
                   github.com/SolFinder-project/sol-closer
                 </a>
@@ -292,6 +292,9 @@ export default function RiskDisclaimer() {
         <div className="mt-12 flex gap-4">
           <Link href="/" className="btn-cyber inline-block">
             ← Back to Home
+          </Link>
+          <Link href="/legal/fr/risks" className="px-6 py-3 rounded-lg border-2 border-neon-purple/30 text-neon-purple hover:bg-neon-purple/10 transition-all duration-300">
+            Version française →
           </Link>
         </div>
       </div>

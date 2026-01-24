@@ -20,7 +20,7 @@ export default function TermsOfService() {
         </h1>
         
         <div className="prose prose-invert max-w-none space-y-6 text-gray-300">
-          <p className="text-sm text-gray-500">Dernière mise à jour : 24 janvier 2026</p>
+          <p className="text-sm text-gray-500">Dernière mise à jour : [À COMPLÉTER]</p>
 
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">1. Préambule</h2>
@@ -30,11 +30,11 @@ export default function TermsOfService() {
             </p>
             <div className="p-4 bg-dark-card border border-dark-border rounded-lg mt-4">
               <p>
-                <strong>Raison sociale :</strong> SOLcloser<br />
-                <strong>Forme juridique :</strong> Micro-entreprise<br />
-                <strong>SIRET :</strong> En cours d'obtention<br />
-                <strong>Adresse :</strong> 8 place roger salengro, 31000 Toulouse, France<br />
-                <strong>Email :</strong> solcloser@gmail.com
+                <strong>Raison sociale :</strong> [À COMPLÉTER]<br />
+                <strong>Forme juridique :</strong> [À COMPLÉTER - ex: Auto-entrepreneur]<br />
+                <strong>SIRET :</strong> [À COMPLÉTER]<br />
+                <strong>Adresse :</strong> [À COMPLÉTER]<br />
+                <strong>Email :</strong> [À COMPLÉTER]
               </p>
             </div>
             <p className="mt-4">
@@ -197,7 +197,7 @@ export default function TermsOfService() {
             </p>
             <p>
               Pour plus d'informations sur la collecte et le traitement des données, veuillez consulter 
-              notre <Link href="/legal/fr/privacy" className="text-neon-pink hover:underline">Politique de Confidentialité</Link>.
+              notre <Link href="/legal/privacy" className="text-neon-pink hover:underline">Politique de Confidentialité</Link>.
             </p>
           </section>
 
@@ -265,6 +265,9 @@ export default function TermsOfService() {
                 https://ec.europa.eu/consumers/odr/
               </a>
             </p>
+            <p className="mt-4">
+              Médiateur de la consommation : [À COMPLÉTER]
+            </p>
           </section>
 
           <section>
@@ -286,8 +289,8 @@ export default function TermsOfService() {
             </p>
             <div className="p-4 bg-dark-card border border-dark-border rounded-lg mt-4">
               <p>
-                <strong>Email :</strong> solcloser@gmail.com<br />
-                <strong>Adresse :</strong> 8 place roger salengro, 31000 Toulouse, France<br />
+                <strong>Email :</strong> [À COMPLÉTER]<br />
+                <strong>Adresse :</strong> [À COMPLÉTER]<br />
                 <strong>GitHub :</strong> <a href="https://github.com/SolFinder-project/sol-closer" target="_blank" rel="noopener noreferrer" className="text-neon-pink hover:underline">
                   https://github.com/SolFinder-project/sol-closer
                 </a>

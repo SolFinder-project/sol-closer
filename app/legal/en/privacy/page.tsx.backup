@@ -20,7 +20,7 @@ export default function PrivacyPolicy() {
         </h1>
         
         <div className="prose prose-invert max-w-none space-y-6 text-gray-300">
-          <p className="text-sm text-gray-500">Last Updated: January 24, 2026</p>
+          <p className="text-sm text-gray-500">Last Updated: [TO BE COMPLETED]</p>
 
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">1. Introduction</h2>
@@ -44,10 +44,10 @@ export default function PrivacyPolicy() {
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">2. Data Controller</h2>
             <div className="p-4 bg-dark-card border border-dark-border rounded-lg">
               <p>
-                <strong>Data Controller:</strong> Maxime Lohier<br />
-                <strong>Business ID:</strong> Pending registration<br />
-                <strong>Address:</strong> 8 place roger salengro, 31000 Toulouse, France<br />
-                <strong>Email:</strong> solcloser@gmail.com
+                <strong>Data Controller:</strong> [TO BE COMPLETED]<br />
+                <strong>Business ID:</strong> [TO BE COMPLETED]<br />
+                <strong>Address:</strong> [TO BE COMPLETED]<br />
+                <strong>Email:</strong> [TO BE COMPLETED]
               </p>
             </div>
           </section>
@@ -167,7 +167,7 @@ export default function PrivacyPolicy() {
             </div>
 
             <p className="mt-4">
-              <strong>To exercise your rights, contact us at:</strong> solcloser@gmail.com
+              <strong>To exercise your rights, contact us at:</strong> [TO BE COMPLETED]
             </p>
           </section>
 
@@ -270,8 +270,8 @@ export default function PrivacyPolicy() {
             </p>
             <div className="p-4 bg-dark-card border border-dark-border rounded-lg mt-4">
               <p>
-                <strong>Email:</strong> solcloser@gmail.com<br />
-                <strong>Address:</strong> 8 place roger salengro, 31000 Toulouse, France<br />
+                <strong>Email:</strong> [TO BE COMPLETED]<br />
+                <strong>Address:</strong> [TO BE COMPLETED]<br />
                 <strong>GitHub:</strong> <a href="https://github.com/SolFinder-project/sol-closer" className="text-neon-pink hover:underline" target="_blank" rel="noopener noreferrer">
                   github.com/SolFinder-project/sol-closer
                 </a>
