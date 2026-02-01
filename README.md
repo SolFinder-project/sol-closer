@@ -69,3 +69,6 @@ Create a `.env.local` file with:
 This tool is provided as-is. Always verify transactions before signing.
 
 **Built with 💜 on Solana**
+
+<!-- Force redeploy for cron -->
+
