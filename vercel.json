@@ -6,5 +6,9 @@
   "regions": ["cdg1"],
   "env": {
     "NODE_ENV": "production"
-  }
+  },
+    "crons": [{
+    "path": "/api/cron/update-leaderboard",
+    "schedule": "0 * * * *"
+  }]
 }
