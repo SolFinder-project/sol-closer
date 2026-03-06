@@ -16,10 +16,10 @@ interface Achievement {
 }
 
 const ACHIEVEMENT_DEFINITIONS = [
-  { id: 'first_close', name: 'First Steps', description: 'Close your first token account', icon: '🎯', requirement: 1, category: 'accounts' as const },
-  { id: 'close_10', name: 'Getting Started', description: 'Close 10 token accounts', icon: '🔟', requirement: 10, category: 'accounts' as const },
-  { id: 'close_50', name: 'Cleanup Crew', description: 'Close 50 token accounts', icon: '🧹', requirement: 50, category: 'accounts' as const },
-  { id: 'close_100', name: 'Account Slayer', description: 'Close 100 token accounts', icon: '⚔️', requirement: 100, category: 'accounts' as const },
+  { id: 'first_close', name: 'First Steps', description: 'Close your first item (empty, dust, Pump PDA or PumpSwap PDA)', icon: '🎯', requirement: 1, category: 'accounts' as const },
+  { id: 'close_10', name: 'Getting Started', description: 'Close 10 items across any reclaim type', icon: '🔟', requirement: 10, category: 'accounts' as const },
+  { id: 'close_50', name: 'Cleanup Crew', description: 'Close 50 items across any reclaim type', icon: '🧹', requirement: 50, category: 'accounts' as const },
+  { id: 'close_100', name: 'Account Slayer', description: 'Close 100 items across any reclaim type', icon: '⚔️', requirement: 100, category: 'accounts' as const },
   { id: 'sol_0.1', name: 'Pocket Change', description: 'Reclaim 0.1 SOL', icon: '🪙', requirement: 0.1, category: 'sol' as const },
   { id: 'sol_1', name: 'One SOL Club', description: 'Reclaim 1 SOL', icon: '💰', requirement: 1, category: 'sol' as const },
   { id: 'sol_5', name: 'SOL Collector', description: 'Reclaim 5 SOL', icon: '💎', requirement: 5, category: 'sol' as const },
@@ -37,6 +37,13 @@ export default function Achievements() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!publicKey) {
+      setAchievements([]);
+      setLoading(false);
+      return;
+    }
+    setAchievements([]);
+    setLoading(true);
     loadAchievements();
   }, [publicKey]);
 
@@ -47,8 +54,6 @@ export default function Achievements() {
       return;
     }
 
-    setLoading(true);
-    
     try {
       const stats = await getUserStats(publicKey.toString());
       
@@ -86,46 +91,50 @@ export default function Achievements() {
 
   if (!publicKey) {
     return (
-      <div className="card-cyber text-center py-12">
-        <div className="text-6xl mb-4">🏆</div>
-        <p className="text-xl text-gray-400">Connect your wallet to view achievements</p>
+      <div className="animate-slide-up max-w-xl mx-auto">
+        <div className="card-cyber text-center py-10 md:py-12 border-dark-border">
+          <div className="text-5xl md:text-6xl mb-4">🏆</div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Achievements</p>
+          <h2 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-orbitron)] text-white mb-3">Connect your wallet</h2>
+          <p className="text-sm text-gray-400">Connect your wallet to view and unlock achievements.</p>
+        </div>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="card-cyber text-center py-12">
-        <div className="text-4xl mb-4 animate-spin">⏳</div>
-        <p className="text-gray-400">Loading achievements...</p>
+      <div className="card-cyber text-center py-10 md:py-12 border-dark-border">
+        <div className="text-4xl mb-3 animate-spin">⏳</div>
+        <p className="text-sm text-gray-400">Loading achievements...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="card-cyber">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h2 className="text-3xl font-bold font-[family-name:var(--font-orbitron)] mb-2">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-pink">
-                Achievements
-              </span>
-            </h2>
-            <p className="text-gray-400 text-sm">{unlockedCount} / {totalCount} unlocked</p>
+    <div className="animate-slide-up space-y-8 md:space-y-10">
+      <div className="text-center md:text-left mb-8 md:mb-10">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Achievements</p>
+        <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold font-[family-name:var(--font-orbitron)] text-white mb-2">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-pink">Unlock badges</span>
+        </h1>
+        <p className="text-sm text-gray-400">{unlockedCount} / {totalCount} unlocked</p>
+      </div>
+
+      <div className="card-cyber border-dark-border p-4 md:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex-1">
+            <p className="text-xs text-gray-400 mb-1">Overall progress</p>
+            <p className="text-lg font-bold font-[family-name:var(--font-orbitron)] text-neon-purple">
+              {totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0}%
+            </p>
           </div>
-          <div className="w-full md:w-64">
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-400">Progress</span>
-              <span className="text-neon-purple font-mono">
-                {totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0}%
-              </span>
-            </div>
-            <div className="w-full bg-dark-bg rounded-full h-3 overflow-hidden">
-              <div 
+          <div className="w-full sm:w-48 flex-1 sm:flex-none">
+            <div className="w-full bg-dark-bg rounded-full h-2.5 overflow-hidden">
+              <div
                 className="h-full bg-gradient-to-r from-neon-purple to-neon-pink rounded-full transition-all duration-500"
                 style={{ width: `${totalCount > 0 ? (unlockedCount / totalCount) * 100 : 0}%` }}
-              ></div>
+              />
             </div>
           </div>
         </div>
@@ -136,10 +145,10 @@ export default function Achievements() {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+            className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               filter === f
-                ? 'bg-gradient-to-r from-neon-purple to-neon-pink text-white'
-                : 'bg-dark-card text-gray-400 hover:text-white border border-dark-border'
+                ? 'bg-neon-purple text-white'
+                : 'border border-dark-border text-gray-400 hover:bg-white/5 hover:border-neon-purple/40'
             }`}
           >
             {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -147,55 +156,52 @@ export default function Achievements() {
         ))}
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredAchievements.map((achievement) => (
-          <div
-            key={achievement.id}
-            className={`card-cyber transition-all ${
-              achievement.unlocked
-                ? 'border-neon-purple/50 bg-gradient-to-br from-neon-purple/10 to-transparent'
-                : 'opacity-60 hover:opacity-80'
-            }`}
-          >
-            <div className="text-center">
-              <div className={`text-5xl mb-4 ${achievement.unlocked ? 'animate-float' : 'grayscale'}`}>
+      <div>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Badges</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+          {filteredAchievements.map((achievement) => (
+            <div
+              key={achievement.id}
+              className={`card-cyber border-dark-border text-center py-5 px-4 transition-all ${
+                achievement.unlocked ? 'border-neon-purple/40 bg-dark-card/80' : 'opacity-60 hover:opacity-80'
+              }`}
+            >
+              <div className={`text-4xl md:text-5xl mb-3 ${achievement.unlocked ? 'animate-float' : 'grayscale'}`}>
                 {achievement.icon}
               </div>
-              <h3 className={`text-lg font-bold mb-2 font-[family-name:var(--font-orbitron)] ${
+              <h3 className={`text-base font-bold font-[family-name:var(--font-orbitron)] mb-1 ${
                 achievement.unlocked ? 'text-neon-purple' : 'text-gray-400'
               }`}>
                 {achievement.name}
               </h3>
-              <p className="text-xs text-gray-400 mb-4">{achievement.description}</p>
+              <p className="text-xs text-gray-400 mb-3">{achievement.description}</p>
               {achievement.unlocked ? (
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neon-green/20 border border-neon-green/30 text-neon-green text-xs">
-                  <span>✓</span><span>Unlocked!</span>
-                </div>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neon-green/20 border border-neon-green/30 text-neon-green text-xs">
+                  ✓ Unlocked
+                </span>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex justify-between text-xs text-gray-500">
                     <span>Progress</span>
                     <span className="font-mono">
-                      {achievement.category === 'sol' 
-                        ? `${achievement.progress.toFixed(2)} / ${achievement.requirement}`
-                        : `${achievement.progress} / ${achievement.requirement}`}
+                      {achievement.category === 'sol' ? `${achievement.progress.toFixed(2)} / ${achievement.requirement}` : `${achievement.progress} / ${achievement.requirement}`}
                     </span>
                   </div>
                   <div className="w-full bg-dark-bg rounded-full h-2 overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-gradient-to-r from-neon-purple/50 to-neon-pink/50 rounded-full"
                       style={{ width: `${Math.min((achievement.progress / achievement.requirement) * 100, 100)}%` }}
-                    ></div>
+                    />
                   </div>
                 </div>
               )}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       <div className="text-center">
-        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-sm">
+        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-xs md:text-sm">
           <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
           Live Data from Supabase
         </span>

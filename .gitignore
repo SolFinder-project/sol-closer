@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -40,5 +41,16 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Scripts sensibles
+# Scripts sensibles (clés, wallets, scripts métier)
 /scripts/
+
+# Documentation de développement (briefs, audits, guides internes, analyses)
+/docs/
+
+# Fichiers sensibles supplémentaires (clés, credentials, keypairs)
+*.key
+*keypair*.json
+*-credentials*.json
+wallet*.json
+.env.*.local
+.env.local.*

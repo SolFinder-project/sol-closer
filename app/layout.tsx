@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Orbitron } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import MobileDevBanner from "@/components/ui/MobileDevBanner";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
@@ -16,22 +17,25 @@ const orbitron = Orbitron({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://solcloser.com'),
-  title: "SOLcloser - Reclaim Your Locked SOL from Empty Token Accounts",
-  description: "Close unused SPL token accounts and recover your rent deposits on Solana. Fast, secure, and transparent. Earn 10% referral rewards.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://solcloser.com'),
+  title: "SolPit - Reclaim. Refuel. Race.",
+  description: "Reclaim SOL from empty accounts, dust, Burn NFT, Pump PDA, PumpSwap PDA, Drift, cNFT close. Weekly F1 race: earn points, best lap wins. Create F1-themed NFTs from your reclaims. Stake with PSOL or Marinade, or swap with Jupiter. 10% referral.",
   keywords: [
     "reclaim SOL",
     "close token accounts",
+    "Burn NFT",
+    "cNFT close",
     "Solana",
+    "F1 race",
+    "NFT Creator",
     "SPL token",
     "recover locked SOL",
-    "token account rent",
     "Solana wallet cleanup",
     "empty token accounts",
   ],
-  authors: [{ name: "SOLcloser" }],
-  creator: "SOLcloser",
-  publisher: "SOLcloser",
+  authors: [{ name: "SolPit" }],
+  creator: "SolPit",
+  publisher: "SolPit",
   robots: {
     index: true,
     follow: true,
@@ -39,22 +43,22 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    siteName: "SOLcloser",
-    title: "SOLcloser - Reclaim Your Locked SOL",
-    description: "Close unused SPL token accounts and recover your rent deposits on Solana. Fast, secure, and transparent.",
+    siteName: "SolPit",
+    title: "SolPit - Reclaim. Refuel. Race.",
+    description: "Reclaim SOL from empty accounts, dust, Burn NFT, Pump PDA, Drift, cNFT close. Weekly F1 race; create F1-themed NFTs. Stake with PSOL or Marinade, or swap in-app.",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "SOLcloser - Reclaim Your Locked SOL",
+        alt: "SolPit - Reclaim Your Locked SOL",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SOLcloser - Reclaim Your Locked SOL",
-    description: "Close unused SPL token accounts and recover your rent deposits on Solana. Fast, secure, and transparent.",
+    title: "SolPit - Reclaim. Refuel. Race.",
+    description: "Reclaim SOL from empty accounts, dust, Burn NFT, Pump PDA, Drift, cNFT close. Weekly F1 race; create F1-themed NFTs. Stake with PSOL or Marinade, or swap in-app.",
     images: ["/og-image.png"],
   },
   icons: {
@@ -78,8 +82,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${orbitron.variable} antialiased`}>
+      <body className={`${inter.variable} ${orbitron.variable} antialiased overflow-x-hidden`}>
         <Providers>
+          <MobileDevBanner />
           {children}
         </Providers>
       </body>

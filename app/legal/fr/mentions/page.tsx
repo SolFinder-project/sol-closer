@@ -41,7 +41,7 @@ export default function LegalNotice() {
 
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">2. Hébergement</h2>
-            <p>Le site SOLcloser est hébergé par :</p>
+            <p>Le site SolPit est hébergé par :</p>
             <div className="p-4 bg-dark-card border border-dark-border rounded-lg mt-4">
               <p>
                 <strong>Vercel Inc.</strong><br />
@@ -78,11 +78,11 @@ export default function LegalNotice() {
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">4. Propriété Intellectuelle</h2>
             <p>
               L'ensemble du contenu de ce site (structure, textes, logos, images, éléments graphiques, 
-              etc.) est la propriété exclusive de SOLcloser, à l'exception des marques et contenus 
+              etc.) est la propriété exclusive de SolPit, à l'exception des marques et contenus 
               appartenant à des tiers.
             </p>
             <p className="mt-4">
-              <strong>Code source :</strong> Le code source de SOLcloser est publié sous licence 
+              <strong>Code source :</strong> Le code source de SolPit est publié sous licence 
               Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0).
             </p>
             <p className="mt-2">
@@ -134,7 +134,7 @@ export default function LegalNotice() {
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">6. Cookies</h2>
             <p>
-              SOLcloser n'utilise pas de cookies de tracking ou de ciblage publicitaire.
+              SolPit n'utilise pas de cookies de tracking ou de ciblage publicitaire.
             </p>
             <p className="mt-2">
               Les seuls cookies potentiellement utilisés sont strictement nécessaires au fonctionnement 
@@ -145,7 +145,7 @@ export default function LegalNotice() {
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">7. Crédits</h2>
             <ul className="list-disc pl-6 space-y-2">
-              <li><strong>Design et développement :</strong> SOLcloser</li>
+              <li><strong>Design et développement :</strong> SolPit</li>
               <li><strong>Framework :</strong> Next.js (Vercel)</li>
               <li><strong>Blockchain :</strong> Solana</li>
               <li><strong>Icônes :</strong> Heroicons</li>

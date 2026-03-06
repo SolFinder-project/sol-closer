@@ -25,7 +25,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">1. Acceptance of Terms</h2>
             <p>
-              By accessing and using SOLcloser ("the Service"), you accept and agree to be bound by the terms 
+              By accessing and using SolPit ("the Service"), you accept and agree to be bound by the terms 
               and provisions of this agreement. If you do not agree to these Terms of Service, please do not 
               use the Service.
             </p>
@@ -34,7 +34,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">2. Description of Service</h2>
             <p>
-              SOLcloser is a decentralized application (dApp) that allows users to identify and close unused 
+              SolPit is a decentralized application (dApp) that allows users to identify and close unused 
               SPL token accounts on the Solana blockchain to reclaim rent deposits (SOL).
             </p>
             <p>The Service provides:</p>
@@ -64,7 +64,7 @@ export default function TermsOfService() {
             
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">4.1 Service Fee</h3>
             <p>
-              SOLcloser charges a service fee of 20% on all SOL reclaimed through the closing of token accounts. 
+              SolPit charges a service fee of 20% on all SOL reclaimed through the closing of token accounts. 
               This fee is automatically deducted during the transaction process.
             </p>
             <p>
@@ -91,7 +91,7 @@ export default function TermsOfService() {
 
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">5.2 No Financial Advice</h3>
             <p>
-              SOLcloser does not provide financial, investment, legal, or tax advice. All decisions 
+              SolPit does not provide financial, investment, legal, or tax advice. All decisions 
               regarding the use of the Service are your sole responsibility. You should consult with 
               professional advisors before making any financial decisions.
             </p>
@@ -111,7 +111,7 @@ export default function TermsOfService() {
 
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">5.4 Limitation of Liability</h3>
             <p>
-              TO THE MAXIMUM EXTENT PERMITTED BY LAW, SOLCLOSER AND ITS OPERATORS SHALL NOT BE LIABLE 
+              TO THE MAXIMUM EXTENT PERMITTED BY LAW, SOLPIT AND ITS OPERATORS SHALL NOT BE LIABLE 
               FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS 
               OF PROFITS OR REVENUES, WHETHER INCURRED DIRECTLY OR INDIRECTLY, OR ANY LOSS OF DATA, 
               USE, GOODWILL, OR OTHER INTANGIBLE LOSSES RESULTING FROM:
@@ -139,7 +139,7 @@ export default function TermsOfService() {
               <li>Maintaining secure backups of your recovery phrase</li>
             </ul>
             <p className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-              <strong>Critical:</strong> SOLcloser never has access to your private keys and cannot 
+              <strong>Critical:</strong> SolPit never has access to your private keys and cannot 
               reverse transactions or recover lost funds.
             </p>
           </section>
@@ -162,7 +162,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">8. Intellectual Property</h2>
             <p>
-              The Service and its original content, features, and functionality are owned by SOLcloser 
+              The Service and its original content, features, and functionality are owned by SolPit 
               and are protected by international copyright, trademark, and other intellectual property laws.
             </p>
             <p className="mt-4">
@@ -175,7 +175,7 @@ export default function TermsOfService() {
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">9. Tax Obligations</h2>
             <p>
               You are solely responsible for determining what taxes, if any, apply to your use of the Service 
-              and any gains you realize. SOLcloser is not responsible for determining, collecting, reporting, 
+              and any gains you realize. SolPit is not responsible for determining, collecting, reporting, 
               or remitting taxes arising from your use of the Service.
             </p>
             <p className="mt-4">
@@ -187,7 +187,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">10. Anti-Money Laundering</h2>
             <p>
-              SOLcloser is committed to combating money laundering and terrorist financing. We reserve the 
+              SolPit is committed to combating money laundering and terrorist financing. We reserve the 
               right to suspend or refuse access to the Service in case of suspected fraudulent or illegal activity.
             </p>
             <p className="mt-4">
@@ -245,8 +245,8 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">15. Entire Agreement</h2>
             <p>
-              These Terms constitute the entire agreement between you and SOLcloser regarding the use 
-              of the Service, superseding any prior agreements between you and SOLcloser relating to your 
+These Terms constitute the entire agreement between you and SolPit regarding the use
+              of the Service, superseding any prior agreements between you and SolPit relating to your
               use of the Service.
             </p>
           </section>
@@ -269,7 +269,7 @@ export default function TermsOfService() {
 
           <div className="mt-12 pt-8 border-t border-dark-border">
             <p className="text-sm text-gray-500">
-              By using SOLcloser, you acknowledge that you have read, understood, and agree to be bound 
+              By using SolPit, you acknowledge that you have read, understood, and agree to be bound 
               by these Terms of Service.
             </p>
           </div>

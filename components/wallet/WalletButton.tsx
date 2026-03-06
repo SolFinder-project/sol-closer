@@ -12,6 +12,7 @@ export default function WalletButton() {
   const [currentWalletBrowser, setCurrentWalletBrowser] = useState<'phantom' | 'solflare' | null>(null);
   const [showMobileHelper, setShowMobileHelper] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isLocalOrigin, setIsLocalOrigin] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -19,6 +20,8 @@ export default function WalletButton() {
     
     const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     setIsMobile(mobile);
+    const host = window.location.hostname;
+    setIsLocalOrigin(host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.'));
     
     const phantom = (window as any).phantom?.solana || (window as any).solana;
     const solflare = (window as any).solflare;
@@ -159,7 +162,8 @@ export default function WalletButton() {
               
               <button
                 onClick={() => {
-                  window.open(`https://solscan.io/account/${fullAddress}?cluster=devnet`, '_blank');
+                  const cluster = process.env.NEXT_PUBLIC_SOLANA_NETWORK === 'mainnet-beta' ? '' : '?cluster=devnet';
+                  window.open(`https://solscan.io/account/${fullAddress}${cluster}`, '_blank');
                   setShowDropdown(false);
                 }}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-dark-border/50 transition-colors text-left"
@@ -283,6 +287,11 @@ export default function WalletButton() {
             <p className="text-xs text-gray-500 text-center">
               Your wallet app will open this page in its built-in browser
             </p>
+            {isLocalOrigin && (
+              <p className="text-xs text-amber-400/90 text-center bg-amber-500/10 rounded-lg p-2">
+                If connection stays loading: this URL is not HTTPS. Run in another terminal: <code className="font-mono">npx ngrok http 3000</code>, then open the <strong>https://</strong> link on your phone.
+              </p>
+            )}
 
             <button
               onClick={() => setShowMobileHelper(false)}

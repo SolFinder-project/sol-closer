@@ -61,71 +61,69 @@ export default function Leaderboard() {
 
   if (loading) {
     return (
-      <div className="text-center py-20">
-        <div className="inline-block animate-spin text-6xl">⚡</div>
-        <p className="text-gray-400 mt-4">Loading leaderboard...</p>
+      <div className="card-cyber text-center py-10 md:py-12 border-dark-border">
+        <div className="text-4xl mb-3 animate-spin">⏳</div>
+        <p className="text-sm text-gray-400">Loading leaderboard...</p>
       </div>
     );
   }
 
   if (leaderboard.length === 0) {
     return (
-      <div className="text-center py-20">
-        <div className="text-6xl mb-4">🏆</div>
-        <h2 className="text-2xl font-bold mb-4">No Data Yet</h2>
-        <p className="text-gray-400">Be the first to appear on the leaderboard!</p>
+      <div className="animate-slide-up max-w-xl mx-auto">
+        <div className="card-cyber text-center py-10 md:py-12 border-dark-border">
+          <div className="text-5xl md:text-6xl mb-4">🏆</div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Leaderboard</p>
+          <h2 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-orbitron)] text-white mb-3">No data yet</h2>
+          <p className="text-sm text-gray-400">Be the first to appear on the leaderboard.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="animate-slide-up">
-      <div className="text-center mb-8 md:mb-12">
-        <h1 className="text-3xl md:text-5xl font-bold font-[family-name:var(--font-orbitron)] mb-4">
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-pink">
-            🏆 Leaderboard
-          </span>
+    <div className="animate-slide-up space-y-8 md:space-y-10">
+      <div className="text-center mb-8 md:mb-10">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Leaderboard</p>
+        <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold font-[family-name:var(--font-orbitron)] text-white mb-2">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-pink">Top reclaimers</span>
         </h1>
-        <p className="text-gray-400 text-sm md:text-lg">
-          Compete with others and see top performers globally
-        </p>
+        <p className="text-sm text-gray-400">Top performers globally. Refreshes every 30s.</p>
       </div>
 
-      {/* Tabs - responsive */}
-      <div className="flex flex-wrap justify-center gap-2 md:gap-4 mb-6 md:mb-8">
+      <div className="flex flex-wrap justify-center gap-2 md:gap-3">
         <button
           onClick={() => setActiveTab('sol')}
-          className={`px-3 md:px-6 py-2 md:py-3 rounded-lg font-bold text-xs md:text-base transition-all ${
+          className={`px-4 md:px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${
             activeTab === 'sol'
               ? 'bg-neon-purple text-white'
-              : 'bg-dark-card text-gray-400 hover:bg-dark-card/80'
+              : 'border border-dark-border text-gray-400 hover:bg-white/5 hover:border-neon-purple/40'
           }`}
         >
           💎 <span className="hidden sm:inline">Most </span>SOL
         </button>
         <button
           onClick={() => setActiveTab('accounts')}
-          className={`px-3 md:px-6 py-2 md:py-3 rounded-lg font-bold text-xs md:text-base transition-all ${
+          className={`px-4 md:px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${
             activeTab === 'accounts'
               ? 'bg-neon-purple text-white'
-              : 'bg-dark-card text-gray-400 hover:bg-dark-card/80'
+              : 'border border-dark-border text-gray-400 hover:bg-white/5 hover:border-neon-purple/40'
           }`}
         >
           🔒 <span className="hidden sm:inline">Most </span>Accounts
         </button>
         <button
           onClick={() => setActiveTab('referrals')}
-          className={`px-3 md:px-6 py-2 md:py-3 rounded-lg font-bold text-xs md:text-base transition-all ${
+          className={`px-4 md:px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${
             activeTab === 'referrals'
               ? 'bg-neon-purple text-white'
-              : 'bg-dark-card text-gray-400 hover:bg-dark-card/80'
+              : 'border border-dark-border text-gray-400 hover:bg-white/5 hover:border-neon-purple/40'
           }`}
         >
           ⭐ <span className="hidden sm:inline">Most </span>Referrals
         </button>
       </div>
 
-      {/* Leaderboard - responsive */}
       <div className="space-y-3 md:space-y-4">
         {sortedData.map((user, index) => {
           const rank = index + 1;
@@ -135,55 +133,36 @@ export default function Leaderboard() {
               : activeTab === 'accounts'
               ? user.total_accounts_closed.toString()
               : (user.referral_earnings || 0).toFixed(4);
-
-          const label =
-            activeTab === 'sol'
-              ? 'SOL'
-              : activeTab === 'accounts'
-              ? 'Accounts'
-              : 'SOL Earned';
-
+          const label = activeTab === 'sol' ? 'SOL' : activeTab === 'accounts' ? 'Accounts' : 'SOL Earned';
           return (
             <div
               key={user.wallet_address}
-              className={`card-cyber flex items-center justify-between p-4 md:p-6 hover:scale-[1.02] transition-transform ${
-                rank <= 3 ? 'border-2 border-neon-purple/50' : ''
+              className={`card-cyber flex items-center justify-between p-4 md:p-5 border-dark-border ${
+                rank <= 3 ? 'border-neon-purple/50' : ''
               }`}
             >
-              <div className="flex items-center gap-3 md:gap-6">
-                <div className="text-3xl md:text-5xl">{getEmojiForRank(rank)}</div>
-                <div>
-                  <div className="text-lg md:text-2xl font-bold text-white">
-                    #{rank}
-                  </div>
-                  <div className="text-xs md:text-sm text-gray-400 font-mono">
-                    {formatWallet(user.wallet_address)}
-                  </div>
+              <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                <span className="text-2xl md:text-3xl shrink-0">{getEmojiForRank(rank)}</span>
+                <div className="min-w-0">
+                  <p className="text-base md:text-lg font-bold text-white">#{rank}</p>
+                  <p className="text-xs md:text-sm text-gray-400 font-mono truncate">{formatWallet(user.wallet_address)}</p>
                 </div>
               </div>
-
-              <div className="text-right">
-                <div
-                  className={`text-xl md:text-3xl font-bold ${
-                    activeTab === 'sol'
-                      ? 'text-neon-purple'
-                      : activeTab === 'accounts'
-                      ? 'text-neon-pink'
-                      : 'text-neon-cyan'
-                  }`}
-                >
+              <div className="text-right shrink-0">
+                <p className={`text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] ${
+                  activeTab === 'sol' ? 'text-neon-purple' : activeTab === 'accounts' ? 'text-neon-pink' : 'text-neon-cyan'
+                }`}>
                   {value}
-                </div>
-                <div className="text-xs md:text-sm text-gray-400">{label}</div>
+                </p>
+                <p className="text-xs text-gray-400">{label}</p>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Live indicator */}
-      <div className="mt-6 md:mt-8 text-center">
-        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-sm">
+      <div className="text-center">
+        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-xs md:text-sm">
           <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
           Live Data from Supabase
         </span>

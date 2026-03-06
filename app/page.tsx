@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import WalletButton from '@/components/wallet/WalletButton';
 import AccountScanner from '@/components/account/AccountScanner';
 import ReferralDashboard from '@/components/account/ReferralDashboard';
@@ -8,15 +8,23 @@ import UserDashboard from '@/components/account/UserDashboard';
 import TransactionHistory from '@/components/account/TransactionHistory';
 import Achievements from '@/components/account/Achievements';
 import Leaderboard from '@/components/account/Leaderboard';
+import F1GamePage from '@/components/game/F1GamePage';
+import NftCreatorPage from '@/components/nft-creator/NftCreatorPage';
 import Logo from '@/components/ui/Logo';
 import StatsCard from '@/components/ui/StatsCard';
 import LiveFeed from '@/components/ui/LiveFeed';
 import { getGlobalStats } from '@/lib/supabase/transactions';
+import { isValidSolanaAddress } from '@/lib/solana/validators';
 
-type Section = 'home' | 'scanner' | 'dashboard' | 'history' | 'referral' | 'achievements' | 'leaderboard';
+type Section = 'home' | 'scanner' | 'dashboard' | 'history' | 'referral' | 'achievements' | 'leaderboard' | 'game' | 'nftCreator';
+
+const ACCOUNT_SECTIONS: Section[] = ['dashboard', 'history', 'referral', 'achievements', 'leaderboard', 'game', 'nftCreator'];
+
+const REFERRER_STORAGE_KEY = 'solcloser_referrer_wallet';
 
 export default function Home() {
   const [currentSection, setCurrentSection] = useState<Section>('home');
+  const currentSectionRef = useRef<Section>(currentSection);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [globalStats, setGlobalStats] = useState({
     totalClosed: '0',
@@ -24,6 +32,26 @@ export default function Home() {
     activeUsers: '0',
     avgReclaim: '0',
   });
+  const [liveFeedRefreshTrigger, setLiveFeedRefreshTrigger] = useState(0);
+  const loadStatsRef = useRef<() => void>(() => {});
+
+  // Capture referral ref from URL as soon as the app loads (before any navigation strips it).
+  // useReferral() only runs when Scanner/Referral etc. mount; without this, ref would be lost
+  // when user clicks "Scan & reclaim" because navigateTo uses pathname-only pushState.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const refWallet = params.get('ref');
+    if (refWallet) {
+      const cleaned = refWallet.trim();
+      if (isValidSolanaAddress(cleaned)) {
+        sessionStorage.setItem(REFERRER_STORAGE_KEY, cleaned);
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.delete('ref');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
 
   useEffect(() => {
     async function loadStats() {
@@ -39,21 +67,46 @@ export default function Home() {
         });
       }
     }
+    loadStatsRef.current = loadStats;
     loadStats();
-    
-    const interval = setInterval(loadStats, 10000);
+    const interval = setInterval(() => loadStatsRef.current(), 5000);
     return () => clearInterval(interval);
   }, []);
 
+  const onReclaimSuccess = useCallback(() => {
+    loadStatsRef.current?.();
+    setLiveFeedRefreshTrigger((t) => t + 1);
+  }, []);
+
+  currentSectionRef.current = currentSection;
+
   const navigateTo = (section: Section) => {
+    if (section !== currentSection) {
+      history.pushState({ section: currentSection }, '', window.location.pathname);
+    }
     setCurrentSection(section);
     setMobileMenuOpen(false);
   };
 
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      const fromSection = currentSectionRef.current;
+      if (ACCOUNT_SECTIONS.includes(fromSection)) {
+        setCurrentSection('home');
+        history.replaceState({ section: 'home' }, '', window.location.pathname);
+      } else {
+        const section = (e.state?.section as Section) ?? 'home';
+        setCurrentSection(section);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const renderSection = () => {
     switch (currentSection) {
       case 'scanner':
-        return <AccountScanner />;
+        return <AccountScanner onNavigateToGame={() => navigateTo('game')} onReclaimSuccess={onReclaimSuccess} />;
       case 'dashboard':
         return <UserDashboard />;
       case 'history':
@@ -64,8 +117,12 @@ export default function Home() {
         return <Achievements />;
       case 'leaderboard':
         return <Leaderboard />;
+      case 'game':
+        return <F1GamePage />;
+      case 'nftCreator':
+        return <NftCreatorPage />;
       default:
-        return <HomeContent setSection={navigateTo} globalStats={globalStats} />;
+        return <HomeContent setSection={navigateTo} globalStats={globalStats} liveFeedRefreshTrigger={liveFeedRefreshTrigger} />;
     }
   };
 
@@ -89,6 +146,9 @@ export default function Home() {
               <button onClick={() => navigateTo('scanner')} className="text-gray-400 hover:text-neon-purple transition-colors">
                 Scanner
               </button>
+              <button onClick={() => navigateTo('game')} className="text-gray-400 hover:text-red-400 transition-colors">
+                F1 Race
+              </button>
               <button onClick={() => navigateTo('dashboard')} className="text-gray-400 hover:text-neon-purple transition-colors">
                 Dashboard
               </button>
@@ -103,6 +163,9 @@ export default function Home() {
               </button>
               <button onClick={() => navigateTo('leaderboard')} className="text-gray-400 hover:text-neon-purple transition-colors">
                 Leaderboard
+              </button>
+              <button onClick={() => navigateTo('nftCreator')} className="text-gray-400 hover:text-amber-400 transition-colors">
+                NFT Creator
               </button>
             </nav>
 
@@ -132,6 +195,9 @@ export default function Home() {
               <button onClick={() => navigateTo('scanner')} className="block w-full text-left text-gray-400 hover:text-neon-purple transition-colors py-2">
                 🔍 Scanner
               </button>
+              <button onClick={() => navigateTo('game')} className="block w-full text-left text-gray-400 hover:text-red-400 transition-colors py-2">
+                🏁 F1 Race
+              </button>
               <button onClick={() => navigateTo('dashboard')} className="block w-full text-left text-gray-400 hover:text-neon-purple transition-colors py-2">
                 📊 Dashboard
               </button>
@@ -147,6 +213,9 @@ export default function Home() {
               <button onClick={() => navigateTo('leaderboard')} className="block w-full text-left text-gray-400 hover:text-neon-purple transition-colors py-2">
                 🏆 Leaderboard
               </button>
+              <button onClick={() => navigateTo('nftCreator')} className="block w-full text-left text-gray-400 hover:text-amber-400 transition-colors py-2">
+                🎨 NFT Creator
+              </button>
             </nav>
           )}
         </div>
@@ -161,238 +230,274 @@ export default function Home() {
   );
 }
 
-function HomeContent({ setSection, globalStats }: { setSection: (section: Section) => void; globalStats: any }) {
+function HomeContent({ setSection, globalStats, liveFeedRefreshTrigger = 0 }: { setSection: (section: Section) => void; globalStats: any; liveFeedRefreshTrigger?: number }) {
   return (
     <>
-      {/* Hero Section */}
-      <div className="text-center mb-12 md:mb-16 animate-slide-up">
-        <div className="inline-block mb-4">
-          <span className="px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-neon-purple/10 border border-neon-purple/30 text-neon-purple text-xs md:text-sm font-mono">
-            🤝 By the Community, For the Community
-          </span>
-        </div>
-        
-        <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold font-[family-name:var(--font-orbitron)] mb-4 md:mb-6">
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-neon-pink to-neon-cyan animate-glow">
-            Recover Your
-          </span>
-          <br />
-          <span className="text-white">Locked SOL</span>
-        </h1>
-        
-        <p className="text-base md:text-xl text-gray-400 max-w-3xl mx-auto mb-6 md:mb-8 leading-relaxed px-4">
-          Close unused SPL token accounts and reclaim your rent deposits.
-          <br />
-          <span className="text-neon-green">Each account = ~0.00204 SOL</span> waiting to be recovered.
+      {/* Hero — explicit, accurate, differentiated (4 sources, keep/stake/swap) */}
+      <div className="text-center mb-8 md:mb-10 animate-slide-up max-w-4xl mx-auto">
+        <p className="text-xs font-medium text-neon-purple/90 uppercase tracking-wider mb-2 md:mb-3">
+          Reclaim · Refuel · Race
         </p>
-
-        <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center items-center px-4">
-          <button onClick={() => setSection('scanner')} className="btn-cyber w-full sm:w-auto">
-            Start Scanning →
+        <h1 className="text-xl md:text-3xl lg:text-4xl font-bold font-[family-name:var(--font-orbitron)] text-white mb-3 md:mb-4 leading-tight">
+          Reclaim SOL from more sources. Then keep, stake, swap, play or create.
+        </h1>
+        <p className="text-sm md:text-base text-gray-400 max-w-2xl mx-auto mb-6 leading-relaxed">
+          Empty token accounts, dust, <strong className="text-rose-400/90">Burn NFT</strong>, Pump.fun PDAs, PumpSwap PDAs, Drift accounts, and <strong className="text-amber-400/90">cNFT close</strong> — reclaim in one app. Full reclaim in one transaction. Keep your SOL, or stake with <strong className="text-amber-400/90">PSOL</strong> (Phantom) or <strong className="text-neon-green/90">Marinade</strong>, or swap with <strong className="text-neon-cyan/90">Jupiter</strong> in one click. Compete in the <strong className="text-red-400/90">weekly F1 race</strong>; create <strong className="text-amber-400/90">F1-themed NFTs</strong> from eligible reclaims.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 max-w-3xl mx-auto">
+          <button
+            onClick={() => setSection('scanner')}
+            className="w-full px-8 py-3.5 rounded-xl font-semibold bg-neon-purple text-white hover:bg-neon-purple/90 transition-all shadow-lg shadow-neon-purple/20"
+          >
+            Optimize my wallet
           </button>
-          <button onClick={() => setSection('dashboard')} className="w-full sm:w-auto px-6 py-3 rounded-lg font-bold border-2 border-neon-purple/30 text-neon-purple hover:bg-neon-purple/10 transition-all duration-300">
-            View Dashboard
+          <button
+            onClick={() => setSection('game')}
+            className="w-full px-8 py-3.5 rounded-xl font-semibold border border-red-500/50 text-red-400 hover:bg-red-500/10 hover:border-red-500/70 transition-all"
+          >
+            Weekly F1 Race
+          </button>
+          <button
+            onClick={() => setSection('nftCreator')}
+            className="w-full px-8 py-3.5 rounded-xl font-semibold border border-amber-500/50 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/70 transition-all"
+          >
+            Create NFT
           </button>
         </div>
       </div>
 
-      {/* Global Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-12 md:mb-16">
-        <StatsCard
-          title="Accounts Closed"
-          value={globalStats.totalClosed}
-          icon="🔒"
-          trend="Live data"
-          color="purple"
-        />
-        <StatsCard
-          title="SOL Reclaimed"
-          value={globalStats.totalReclaimed}
-          icon="💎"
-          trend="Real-time"
-          color="pink"
-        />
-        <StatsCard
-          title="Active Users"
-          value={globalStats.activeUsers}
-          icon="👥"
-          trend="Growing"
-          color="cyan"
-        />
-        <StatsCard
-          title="Avg. Recovery"
-          value={`${globalStats.avgReclaim} SOL`}
-          icon="⚡"
-          color="green"
-        />
-      </div>
-
-      {/* Live Activity Feed */}
-      <div className="mb-12 md:mb-16">
-        <LiveFeed />
-      </div>
-
-      {/* Quick Access Cards */}
-      <div className="grid md:grid-cols-3 gap-4 md:gap-6 mb-12 md:mb-16">
-        <button onClick={() => setSection('scanner')} className="card-cyber text-left group hover:scale-105 transition-transform">
-          <div className="text-4xl md:text-5xl mb-3 md:mb-4 group-hover:animate-float">🔍</div>
-          <h3 className="text-xl md:text-2xl font-bold mb-2 font-[family-name:var(--font-orbitron)] text-neon-purple">
-            Scan Wallet
-          </h3>
-          <p className="text-sm md:text-base text-gray-400">
-            Find and close unused token accounts to reclaim your SOL
-          </p>
-        </button>
-
-        <button onClick={() => setSection('referral')} className="card-cyber text-left group hover:scale-105 transition-transform">
-          <div className="text-4xl md:text-5xl mb-3 md:mb-4 group-hover:animate-float" style={{ animationDelay: '0.1s' }}>🎁</div>
-          <h3 className="text-xl md:text-2xl font-bold mb-2 font-[family-name:var(--font-orbitron)] text-neon-pink">
-            Refer & Earn
-          </h3>
-          <p className="text-sm md:text-base text-gray-400">
-            Get 10% of SOL reclaimed by users you refer to SOLcloser
-          </p>
-        </button>
-
-        <button onClick={() => setSection('leaderboard')} className="card-cyber text-left group hover:scale-105 transition-transform">
-          <div className="text-4xl md:text-5xl mb-3 md:mb-4 group-hover:animate-float" style={{ animationDelay: '0.2s' }}>🏆</div>
-          <h3 className="text-xl md:text-2xl font-bold mb-2 font-[family-name:var(--font-orbitron)] text-neon-cyan">
-            Leaderboard
-          </h3>
-          <p className="text-sm md:text-base text-gray-400">
-            Compete with others and see top performers globally
-          </p>
-        </button>
-      </div>
-
-      {/* How It Works */}
-      <div className="mb-12 md:mb-16">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 md:mb-12 font-[family-name:var(--font-orbitron)]">
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-pink">
-            How It Works
-          </span>
+      {/* What you can reclaim — scrollable carousel with arrows */}
+      <div className="mb-12 md:mb-14">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider text-center mb-6">
+          What you can reclaim
         </h2>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-          <div className="card-cyber text-center">
-            <div className="text-3xl md:text-5xl mb-2 md:mb-4">🔌</div>
-            <h3 className="text-lg md:text-xl font-bold mb-1 md:mb-2 text-neon-purple">1. Connect</h3>
-            <p className="text-xs md:text-sm text-gray-400">Connect your Solana wallet securely</p>
+        <div className="relative flex items-center gap-2 max-w-5xl mx-auto">
+          <button
+            type="button"
+            onClick={() => document.getElementById('reclaim-cards')?.scrollBy({ left: -280, behavior: 'smooth' })}
+            className="shrink-0 w-10 h-10 rounded-full border border-dark-border bg-dark-card/80 text-gray-400 hover:text-white hover:border-neon-purple/50 flex items-center justify-center transition-colors"
+            aria-label="Previous features"
+          >
+            <span className="text-xl leading-none">‹</span>
+          </button>
+          <div
+            id="reclaim-cards"
+            className="flex overflow-x-auto gap-3 md:gap-4 py-2 scroll-smooth snap-x snap-mandatory scrollbar-thin flex-1 min-w-0 [scrollbar-width:thin]"
+            style={{ scrollbarGutter: 'stable' }}
+          >
+            <div className="card-cyber border-dark-border bg-dark-card/80 text-center py-5 px-4 min-w-[240px] md:min-w-[260px] shrink-0 snap-start overflow-visible">
+              <p className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-neon-purple mb-1 break-words">Empty <span className="whitespace-nowrap">accounts</span></p>
+              <p className="text-xs text-gray-400 break-words">SPL / Token-2022 · ~0.002 SOL each</p>
+            </div>
+            <div className="card-cyber border-dark-border bg-dark-card/80 text-center py-5 px-4 min-w-[240px] md:min-w-[260px] shrink-0 snap-start overflow-visible">
+              <p className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-neon-pink mb-1 break-words">Dust</p>
+              <p className="text-xs text-gray-400 break-words">Burn + close · small balances</p>
+            </div>
+            <div className="card-cyber border-rose-500/30 bg-dark-card/80 text-center py-5 px-4 min-w-[240px] md:min-w-[260px] shrink-0 snap-start overflow-visible">
+              <p className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-rose-400 mb-1 break-words">Burn NFT</p>
+              <p className="text-xs text-gray-400 break-words">~0.002 SOL per NFT</p>
+            </div>
+            <div className="card-cyber border-dark-border bg-dark-card/80 text-center py-5 px-4 min-w-[240px] md:min-w-[260px] shrink-0 snap-start overflow-visible">
+              <p className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-neon-cyan mb-1 break-words">Pump.fun PDA</p>
+              <p className="text-xs text-gray-400 break-words">~0.0018 SOL per PDA</p>
+            </div>
+            <div className="card-cyber border-dark-border bg-dark-card/80 text-center py-5 px-4 min-w-[240px] md:min-w-[260px] shrink-0 snap-start overflow-visible">
+              <p className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-neon-green mb-1 break-words">PumpSwap PDA</p>
+              <p className="text-xs text-gray-400 break-words">~0.0018 SOL per PDA</p>
+            </div>
+            <div className="card-cyber border-emerald-500/30 bg-dark-card/80 text-center py-5 px-4 min-w-[240px] md:min-w-[260px] shrink-0 snap-start overflow-visible">
+              <p className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-emerald-400 mb-1 break-words">Drift <span className="whitespace-nowrap">account</span></p>
+              <p className="text-xs text-gray-400 break-words">~0.035 SOL · withdraw first</p>
+            </div>
+            <div className="card-cyber border-amber-500/30 bg-dark-card/80 text-center py-5 px-4 min-w-[240px] md:min-w-[260px] shrink-0 snap-start overflow-visible">
+              <p className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-amber-400 mb-1 break-words">cNFT <span className="whitespace-nowrap">close</span></p>
+              <p className="text-xs text-gray-400 break-words">Burn compressed NFTs · reclaim rent</p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={() => document.getElementById('reclaim-cards')?.scrollBy({ left: 280, behavior: 'smooth' })}
+            className="shrink-0 w-10 h-10 rounded-full border border-dark-border bg-dark-card/80 text-gray-400 hover:text-white hover:border-neon-purple/50 flex items-center justify-center transition-colors"
+            aria-label="Next features"
+          >
+            <span className="text-xl leading-none">›</span>
+          </button>
+        </div>
+      </div>
 
-          <div className="card-cyber text-center">
-            <div className="text-3xl md:text-5xl mb-2 md:mb-4">🔍</div>
-            <h3 className="text-lg md:text-xl font-bold mb-1 md:mb-2 text-neon-pink">2. Scan</h3>
-            <p className="text-xs md:text-sm text-gray-400">We scan for empty SPL token accounts</p>
+      {/* F1 Race + NFT Creator — swipeable sections (one visible at a time), like "What you can reclaim" */}
+      <div className="mb-10 md:mb-12">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider text-center mb-6">
+          Featured
+        </h2>
+        <div className="relative flex items-stretch gap-2 max-w-4xl mx-auto">
+          <button
+            type="button"
+            onClick={() => document.getElementById('featured-sections')?.scrollBy({ left: -document.getElementById('featured-sections')!.clientWidth, behavior: 'smooth' })}
+            className="shrink-0 w-10 h-10 rounded-full border border-dark-border bg-dark-card/80 text-gray-400 hover:text-white hover:border-neon-purple/50 flex items-center justify-center transition-colors self-center"
+            aria-label="Previous section"
+          >
+            <span className="text-xl leading-none">‹</span>
+          </button>
+          <div
+            id="featured-sections"
+            className="flex overflow-x-auto gap-4 py-2 scroll-smooth snap-x snap-mandatory flex-1 min-w-0 [scrollbar-width:thin] scrollbar-thin"
+            style={{ scrollbarGutter: 'stable' }}
+          >
+            <button
+              onClick={() => setSection('game')}
+              className="flex-shrink-0 w-full min-w-full max-w-full snap-start card-cyber border-red-500/40 bg-gradient-to-br from-red-500/10 to-amber-500/10 hover:border-red-500/60 hover:from-red-500/15 hover:to-amber-500/15 transition-all p-6 md:p-8 text-left group"
+            >
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1">Weekly competition</p>
+                  <h2 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-orbitron)] text-white mb-2 group-hover:text-red-200 transition-colors">
+                    🏁 SolPit F1 Race
+                  </h2>
+                  <p className="text-sm text-gray-400 max-w-xl">
+                    Reclaim SOL → earn points → upgrade your car → best lap time wins. One race per week. Prize pool in SOL for the top 3. Skill-based, no luck.
+                  </p>
+                </div>
+                <span className="shrink-0 px-5 py-2.5 rounded-xl bg-red-500/20 text-red-300 font-semibold text-sm border border-red-500/40 group-hover:bg-red-500/30 transition-colors">
+                  Enter the race →
+                </span>
+              </div>
+            </button>
+            <button
+              onClick={() => setSection('nftCreator')}
+              className="flex-shrink-0 w-full min-w-full max-w-full snap-start card-cyber border-amber-500/40 bg-gradient-to-br from-amber-500/10 to-orange-500/10 hover:border-amber-500/60 hover:from-amber-500/15 hover:to-orange-500/15 transition-all p-6 md:p-8 text-left group"
+            >
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1">Creator badge</p>
+                  <h2 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-orbitron)] text-white mb-2 group-hover:text-amber-200 transition-colors">
+                    🎨 SolPit NFT Creator
+                  </h2>
+                  <p className="text-sm text-gray-400 max-w-xl">
+                    Reclaim at least 0.02 SOL → create a unique F1-themed NFT in the official collection. Badge + in-game perks when you hold it. One eligible reclaim = one NFT.
+                  </p>
+                </div>
+                <span className="shrink-0 px-5 py-2.5 rounded-xl bg-amber-500/20 text-amber-300 font-semibold text-sm border border-amber-500/40 group-hover:bg-amber-500/30 transition-colors">
+                  Create NFT →
+                </span>
+              </div>
+            </button>
           </div>
+          <button
+            type="button"
+            onClick={() => document.getElementById('featured-sections')?.scrollBy({ left: document.getElementById('featured-sections')!.clientWidth, behavior: 'smooth' })}
+            className="shrink-0 w-10 h-10 rounded-full border border-dark-border bg-dark-card/80 text-gray-400 hover:text-white hover:border-neon-purple/50 flex items-center justify-center transition-colors self-center"
+            aria-label="Next section"
+          >
+            <span className="text-xl leading-none">›</span>
+          </button>
+        </div>
+      </div>
 
-          <div className="card-cyber text-center">
-            <div className="text-3xl md:text-5xl mb-2 md:mb-4">✅</div>
-            <h3 className="text-lg md:text-xl font-bold mb-1 md:mb-2 text-neon-cyan">3. Select</h3>
-            <p className="text-xs md:text-sm text-gray-400">Choose accounts to close</p>
+      {/* Put your SOL to work — PSOL + Marinade + Jupiter */}
+      <div className="mb-10 md:mb-12">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider text-center mb-6">
+          Put your SOL to work
+        </h2>
+        <div className="grid md:grid-cols-2 gap-4 max-w-3xl mx-auto">
+          <div className="card-cyber border-amber-500/30 bg-dark-card/80 hover:border-amber-500/50 transition-colors p-5 text-left">
+            <p className="text-lg font-bold font-[family-name:var(--font-orbitron)] text-amber-400 mb-1">Stake with PSOL</p>
+            <p className="text-sm text-gray-400 mb-4">Turn reclaimed SOL into PSOL (Phantom) or mSOL (Marinade). Earn staking rewards in-app.</p>
+            <button onClick={() => setSection('scanner')} className="text-sm font-medium text-amber-400 hover:underline">
+              Reclaim first, then stake →
+            </button>
           </div>
-
-          <div className="card-cyber text-center">
-            <div className="text-3xl md:text-5xl mb-2 md:mb-4">💰</div>
-            <h3 className="text-lg md:text-xl font-bold mb-1 md:mb-2 text-neon-green">4. Claim</h3>
-            <p className="text-xs md:text-sm text-gray-400">Receive your SOL instantly</p>
+          <div className="card-cyber border-neon-cyan/30 bg-dark-card/80 hover:border-neon-cyan/50 transition-colors p-5 text-left">
+            <p className="text-lg font-bold font-[family-name:var(--font-orbitron)] text-neon-cyan mb-1">Swap with Jupiter</p>
+            <p className="text-sm text-gray-400 mb-4">Swap to USDC, JUP, or any token. Best routes on Solana.</p>
+            <button onClick={() => setSection('scanner')} className="text-sm font-medium text-neon-cyan hover:underline">
+              Reclaim first, then swap →
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Why Choose SOLcloser */}
-      <div className="mb-12 md:mb-16">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 md:mb-12 font-[family-name:var(--font-orbitron)]">
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-green">
-            Why Choose SOLcloser
-          </span>
+      {/* Global Stats — compact */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-10 md:mb-12">
+        <StatsCard title="Items closed" value={globalStats.totalClosed} icon="🔒" trend="Live" color="purple" />
+        <StatsCard title="SOL reclaimed" value={globalStats.totalReclaimed} icon="💎" trend="Real-time" color="pink" />
+        <StatsCard title="Active users" value={globalStats.activeUsers} icon="👥" trend="Growing" color="cyan" />
+        <StatsCard title="Avg. recovery" value={`${globalStats.avgReclaim} SOL`} icon="⚡" color="green" />
+      </div>
+
+      {/* Live feed — subtle */}
+      <div className="mb-10 md:mb-12">
+        <LiveFeed refreshTrigger={liveFeedRefreshTrigger} />
+      </div>
+
+      {/* Quick access — 4 cards, 2×2 on small / 1×4 on large, no empty space */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-10 md:mb-12">
+        <button onClick={() => setSection('scanner')} className="card-cyber text-left group hover:border-neon-purple/40 transition-colors p-4 md:p-5">
+          <span className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-neon-purple block mb-1.5">Scan & reclaim</span>
+          <p className="text-xs md:text-sm text-gray-400 line-clamp-2">Find empty accounts, dust, Burn NFT, Pump PDA, PumpSwap PDA, Drift, cNFT close. One flow.</p>
+        </button>
+        <button onClick={() => setSection('referral')} className="card-cyber text-left group hover:border-neon-pink/40 transition-colors p-4 md:p-5">
+          <span className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-neon-pink block mb-1.5">Refer & earn</span>
+          <p className="text-xs md:text-sm text-gray-400 line-clamp-2">Earn 10% of SOL reclaimed by users you refer.</p>
+        </button>
+        <button onClick={() => setSection('game')} className="card-cyber text-left group hover:border-red-500/40 transition-colors p-4 md:p-5">
+          <span className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-red-400 block mb-1.5">Weekly F1 Race</span>
+          <p className="text-xs md:text-sm text-gray-400 line-clamp-2">Earn points, upgrade your car, best lap time wins. Prize pool for top 3.</p>
+        </button>
+        <button onClick={() => setSection('nftCreator')} className="card-cyber text-left group hover:border-amber-500/40 transition-colors p-4 md:p-5">
+          <span className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-amber-400 block mb-1.5">NFT Creator</span>
+          <p className="text-xs md:text-sm text-gray-400 line-clamp-2">Create an F1-themed NFT from your reclaimed SOL. Badge + perks.</p>
+        </button>
+      </div>
+
+      {/* Why SolPit — trust */}
+      <div className="mb-12 md:mb-14">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider text-center mb-6">
+          Why SolPit
         </h2>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-          <div className="card-cyber border-neon-purple/30">
-            <div className="text-3xl md:text-4xl mb-2 md:mb-4">🔒</div>
-            <h3 className="text-lg md:text-xl font-bold mb-1 md:mb-2 text-neon-purple">Secure by Design</h3>
-            <p className="text-xs md:text-sm text-gray-400">
-              Your keys never leave your wallet. All transactions are signed by you.
-            </p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="card-cyber border-dark-border py-5 px-4">
+            <p className="text-base font-bold text-neon-purple mb-1">Secure</p>
+            <p className="text-xs text-gray-400">Keys stay in your wallet. You sign every tx.</p>
           </div>
-
-          <div className="card-cyber border-neon-pink/30">
-            <div className="text-3xl md:text-4xl mb-2 md:mb-4">⚡</div>
-            <h3 className="text-lg md:text-xl font-bold mb-1 md:mb-2 text-neon-pink">Lightning Fast</h3>
-            <p className="text-xs md:text-sm text-gray-400">
-              Powered by Solana's blazing-fast blockchain.
-            </p>
+          <div className="card-cyber border-dark-border py-5 px-4">
+            <p className="text-base font-bold text-neon-pink mb-1">Fast</p>
+            <p className="text-xs text-gray-400">Solana speed. Reclaim in seconds.</p>
           </div>
-
-          <div className="card-cyber border-neon-cyan/30">
-            <div className="text-3xl md:text-4xl mb-2 md:mb-4">💎</div>
-            <h3 className="text-lg md:text-xl font-bold mb-1 md:mb-2 text-neon-cyan">Transparent Fees</h3>
-            <p className="text-xs md:text-sm text-gray-400">
-              Simple 20% service fee. No hidden costs.
-            </p>
+          <div className="card-cyber border-dark-border py-5 px-4">
+            <p className="text-base font-bold text-neon-cyan mb-1">Transparent</p>
+            <p className="text-xs text-gray-400">20% fee. No hidden costs.</p>
           </div>
-
-          <div className="card-cyber border-neon-green/30">
-            <div className="text-3xl md:text-4xl mb-2 md:mb-4">🎁</div>
-            <h3 className="text-lg md:text-xl font-bold mb-1 md:mb-2 text-neon-green">Earn Rewards</h3>
-            <p className="text-xs md:text-sm text-gray-400">
-              Refer friends and earn 10% of their reclaimed SOL.
-            </p>
+          <div className="card-cyber border-dark-border py-5 px-4">
+            <p className="text-base font-bold text-neon-green mb-1">Earn</p>
+            <p className="text-xs text-gray-400">10% referral on reclaimed SOL.</p>
           </div>
         </div>
       </div>
 
-      {/* Important Notes */}
-      <div className="card-cyber border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-transparent mb-12 md:mb-16">
-        <h3 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 flex items-center font-[family-name:var(--font-orbitron)]">
-          <span className="text-2xl md:text-3xl mr-2 md:mr-3">📋</span>
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
-            Important Notes
-          </span>
+      {/* Important notes — same content, cleaner layout */}
+      <div className="card-cyber border-blue-500/20 bg-blue-500/5 mb-12 md:mb-14">
+        <h3 className="text-base font-bold text-blue-300 mb-4 uppercase tracking-wider">
+          Important
         </h3>
-
-        <div className="space-y-3 md:space-y-4">
-          <div className="flex items-start gap-2 md:gap-3">
-            <div className="text-xl md:text-2xl mt-0.5 md:mt-1 flex-shrink-0">⚠️</div>
-            <div>
-              <h4 className="font-bold text-blue-300 mb-0.5 md:mb-1 text-sm md:text-base">Only Empty Accounts</h4>
-              <p className="text-xs md:text-sm text-gray-400">
-                We only close token accounts with zero balance. Your tokens are always safe.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-2 md:gap-3">
-            <div className="text-xl md:text-2xl mt-0.5 md:mt-1 flex-shrink-0">🔐</div>
-            <div>
-              <h4 className="font-bold text-blue-300 mb-0.5 md:mb-1 text-sm md:text-base">Your Keys, Your Control</h4>
-              <p className="text-xs md:text-sm text-gray-400">
-                We never have access to your private keys.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-2 md:gap-3">
-            <div className="text-xl md:text-2xl mt-0.5 md:mt-1 flex-shrink-0">💡</div>
-            <div>
-              <h4 className="font-bold text-blue-300 mb-0.5 md:mb-1 text-sm md:text-base">Standard Rent Amount</h4>
-              <p className="text-xs md:text-sm text-gray-400">
-                Each SPL token account locks ~0.00204 SOL as rent.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-2 md:gap-3">
-            <div className="text-xl md:text-2xl mt-0.5 md:mt-1 flex-shrink-0">🎯</div>
-            <div>
-              <h4 className="font-bold text-blue-300 mb-0.5 md:mb-1 text-sm md:text-base">Instant Processing</h4>
-              <p className="text-xs md:text-sm text-gray-400">
-                Transactions are processed instantly on the Solana blockchain.
-              </p>
-            </div>
-          </div>
-        </div>
+        <ul className="space-y-3 text-sm text-gray-400">
+          <li className="flex gap-3">
+            <span className="text-blue-400 shrink-0">·</span>
+            <span>We only close <strong className="text-gray-300">empty</strong> token accounts. Your tokens are safe.</span>
+          </li>
+          <li className="flex gap-3">
+            <span className="text-blue-400 shrink-0">·</span>
+            <span>We never have access to your private keys.</span>
+          </li>
+          <li className="flex gap-3">
+            <span className="text-blue-400 shrink-0">·</span>
+            <span>Rent per SPL account ~0.00204 SOL. Burn NFT ~0.002 SOL each. Pump/PumpSwap PDA ~0.0018 SOL each. cNFT close: burn compressed NFTs to reclaim rent.</span>
+          </li>
+          <li className="flex gap-3">
+            <span className="text-blue-400 shrink-0">·</span>
+            <span>Transactions confirm on Solana in seconds.</span>
+          </li>
+        </ul>
       </div>
 
       {/* Footer */}
@@ -400,9 +505,9 @@ function HomeContent({ setSection, globalStats }: { setSection: (section: Sectio
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             <div className="col-span-2 md:col-span-1">
-              <h3 className="text-base md:text-lg font-bold mb-3 md:mb-4 text-neon-purple">About SOLcloser</h3>
+              <h3 className="text-base font-bold mb-3 text-neon-purple">About SolPit</h3>
               <p className="text-xs md:text-sm text-gray-400">
-                Reclaim your SOL from unused token accounts on Solana. Fast, secure, and efficient.
+                Reclaim SOL from empty accounts, dust, Burn NFT, Pump.fun PDAs, PumpSwap PDAs, Drift, and cNFT close. Weekly F1 race (earn points, best lap wins). SolPit NFT Creator: mint F1-themed NFTs from eligible reclaims. Stake with PSOL or Marinade, or swap with Jupiter in-app.
               </p>
             </div>
 
@@ -513,7 +618,7 @@ function HomeContent({ setSection, globalStats }: { setSection: (section: Sectio
           </div>
 
           <div className="mt-8 md:mt-12 pt-6 md:pt-8 border-t border-dark-border text-center text-xs md:text-sm text-gray-500">
-            <p>© {new Date().getFullYear()} SOLcloser. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} SolPit. All rights reserved.</p>
             <p className="mt-2">Built with 💜 on Solana</p>
           </div>
         </div>

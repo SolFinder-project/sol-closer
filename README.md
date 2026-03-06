@@ -1,75 +1,71 @@
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](http://creativecommons.org/licenses/by-nc-sa/4.0/)
 
-# 🔮 SOLcloser - Reclaim Your Locked SOL
+# SolPit – Reclaim SOL, Race F1, Create NFTs
 
-**The most efficient way to reclaim locked SOL from unused token accounts on Solana.**
+**Reclaim locked SOL from empty token accounts, dust, Pump/PumpSwap PDAs, Drift, NFT burn & cNFT close. Weekly F1 race, SolPit NFT Creator, referral, swap & stake — all in one app.**
 
-## 🌟 Features
+## Features
 
-- 🔍 **Smart Scanner** - Automatically detects empty SPL token accounts
-- 🔒 **Safe Closer** - Close accounts and reclaim rent deposits (~0.00204 SOL per account)
-- ⚡ **Lightning Fast** - Powered by Helius RPC for optimal performance
-- 💎 **Token-2022 Support** - Works with both SPL and Token-2022 programs
-- 🎁 **Referral System** - Earn 10% of SOL reclaimed by referred users
-- 📊 **Real-time Stats** - Live leaderboard and personal dashboard
+- **Reclaim** – Empty SPL/Token-2022 accounts, dust (burn + close), Pump.fun & PumpSwap PDAs, Drift accounts, NFT burn, cNFT close. Full reclaim in one transaction.
+- **F1 weekly race** – Earn points from reclaims, compete in leagues (Bronze/Silver/Gold), best lap wins.
+- **NFT Creator** – Mint F1-themed NFTs from eligible reclaims; verified collection, royalties, tier benefits.
+- **Referral** – Earn a share of SOL reclaimed by referred users.
+- **Swap & stake** – Jupiter swap after reclaim; stake with PSOL (Phantom) or Marinade.
+- **Dashboard** – Real-time stats, leaderboard, transaction history, wallet health.
 
-## 🚀 Quick Start
+## Quick start
 
-### Installation
 ```bash
-# Clone the repository
-git clone https://github.com/YOUR_USERNAME/sol-closer.git
-cd sol-closer
+git clone https://github.com/YOUR_USERNAME/sol-reclaimer.git
+cd sol-reclaimer
 
-# Install dependencies
 npm install
-
-# Copy environment variables
 cp .env.example .env.local
+# Edit .env.local with your keys (Supabase, Helius, fee recipient, etc.)
 
-# Edit .env.local with your keys
-nano .env.local
-
-# Run development server
 npm run dev
 ```
 
-## 🔧 Configuration
+Open [http://localhost:3000](http://localhost:3000).
 
-Create a `.env.local` file with:
+## Configuration
 
-- Helius RPC API key
-- Supabase project URL and anon key
-- Your fee recipient wallet address
+Copy the example env and fill in your values:
 
-## 📊 How It Works
+```bash
+cp .env.example .env.local
+```
 
-1. **Connect Wallet** - Use Phantom, Solflare, or any Solana wallet
-2. **Scan Accounts** - We find all your empty SPL token accounts
-3. **Select & Close** - Choose which accounts to close
-4. **Receive SOL** - Instantly reclaim your rent deposits (minus 15% service fee)
+**Required for core reclaim & app:**
 
-## 🏗️ Tech Stack
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_HELIUS_API_KEY` (or `NEXT_PUBLIC_SOLANA_RPC_URL`)
+- `NEXT_PUBLIC_SOLANA_NETWORK` (`mainnet-beta` or `devnet`)
+- `NEXT_PUBLIC_FEE_RECIPIENT_WALLET`
+- `NEXT_PUBLIC_APP_URL` (e.g. `https://yoursite.com` in production)
 
-- Next.js 15, React, TypeScript
-- Tailwind CSS
-- Solana Web3.js, SPL Token, Token-2022
-- Supabase (PostgreSQL)
-- Helius RPC
+**Required for F1 game:** `NEXT_PUBLIC_F1_TREASURY_WALLET`, `F1_ADMIN_SECRET`  
+**Required for NFT Creator (verified collection):** `NFT_CREATOR_COLLECTION_MINT`, `NFT_CREATOR_COLLECTION_AUTHORITY`, admin secret  
+**Required for swap:** `JUPITER_API_KEY`, `NEXT_PUBLIC_JUPITER_API_KEY`  
+**Required for crons (Vercel):** `CRON_SECRET`
 
-## 🛡️ Security
+See **`.env.example`** for the full list and optional variables (Rugcheck, Google Sheets, etc.).
 
-- ✅ Your keys never leave your wallet
-- ✅ All transactions require your explicit approval
-- ✅ Only empty accounts can be closed
-- ✅ Open source and auditable
+## Tech stack
 
-## ⚠️ Disclaimer
+- **Next.js** (App Router), React, TypeScript, Tailwind CSS
+- **Solana** – Web3.js, SPL Token, Token-2022, Helius RPC
+- **Supabase** – PostgreSQL, auth, RLS
+- **Jupiter** (swap), **Marinade / PSOL** (stake), **Drift**, **Metaplex** (NFT Creator)
 
-This tool is provided as-is. Always verify transactions before signing.
+## Security
 
-**Built with 💜 on Solana**
+- Your keys never leave your wallet; all transactions require your signature.
+- Sensitive env (service role, admin secrets, collection authority) are server-side only.
+- `.env.local` and `/scripts/` are in `.gitignore` — never commit secrets.
 
-<!-- Force redeploy for cron -->
+## Disclaimer
 
-# Deployment trigger
+This tool is provided as-is. Always verify transactions before signing. Reclaim and F1 features involve on-chain actions and fees.
+
+**Built on Solana**

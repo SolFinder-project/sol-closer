@@ -25,7 +25,7 @@ export default function RiskDisclaimer() {
               ⚠️ IMPORTANT WARNING
             </p>
             <p>
-              The use of SOLcloser and cryptocurrencies involves significant risks. Please read this 
+              The use of SolPit and cryptocurrencies involves significant risks. Please read this 
               disclaimer carefully before using the Service.
             </p>
           </div>
@@ -33,7 +33,7 @@ export default function RiskDisclaimer() {
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">1. No Financial Advice</h2>
             <p>
-              <strong>SOLcloser does not provide financial, investment, legal, or tax advice.</strong>
+              <strong>SolPit does not provide financial, investment, legal, or tax advice.</strong>
             </p>
             <p className="mt-4">
               All information provided on this site is for informational purposes only and does not 
@@ -86,7 +86,7 @@ export default function RiskDisclaimer() {
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">3.2 Loss of Private Keys</h3>
             <p>
               Loss of your private keys or recovery phrase results in permanent and irretrievable loss 
-              of your funds. SOLcloser never has access to your private keys and cannot recover lost funds.
+              of your funds. SolPit never has access to your private keys and cannot recover lost funds.
             </p>
             <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg mt-4">
               <p className="font-bold text-red-400">
@@ -134,7 +134,7 @@ export default function RiskDisclaimer() {
               <li>Prohibit or restrict cryptocurrency ownership or trading</li>
               <li>Impose additional taxes or reporting requirements</li>
               <li>Affect the value or utility of cryptocurrencies</li>
-              <li>Impact the availability of services like SOLcloser</li>
+              <li>Impact the availability of services like SolPit</li>
             </ul>
 
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">4.2 Tax Obligations</h3>
@@ -149,17 +149,17 @@ export default function RiskDisclaimer() {
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">4.3 Legal Status Varies</h3>
             <p>
               The legal status of cryptocurrencies varies significantly across countries and may change 
-              without notice. Ensure that your use of SOLcloser complies with all applicable laws in 
+              without notice. Ensure that your use of SolPit complies with all applicable laws in 
               your jurisdiction.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-white mt-8 mb-4">5. SOLcloser-Specific Risks</h2>
+            <h2 className="text-2xl font-bold text-white mt-8 mb-4">5. SolPit-Specific Risks</h2>
 
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">5.1 "As Is" Service</h3>
             <p>
-              SOLcloser is provided "as is" without warranties of any kind. We do not guarantee that 
+              SolPit is provided "as is" without warranties of any kind. We do not guarantee that 
               the Service will be error-free, bug-free, or uninterrupted.
             </p>
 
@@ -170,21 +170,21 @@ export default function RiskDisclaimer() {
 
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">5.3 Transaction Fees</h3>
             <p>
-              In addition to SOLcloser's service fee (20%), Solana network fees apply to all transactions. 
-              These fees can vary based on network congestion and are not controlled by SOLcloser.
+In addition to SolPit's service fee (20%), Solana network fees apply to all transactions.
+              These fees can vary based on network congestion and are not controlled by SolPit.
             </p>
 
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">5.4 Third-Party Dependencies</h3>
             <p>
-              SOLcloser relies on third-party services (RPC providers, hosting platforms, blockchain 
-              infrastructure). Issues with these services may affect SOLcloser's functionality.
+SolPit relies on third-party services (RPC providers, hosting platforms, blockchain
+              infrastructure). Issues with these services may affect SolPit's functionality.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">6. Limitation of Liability</h2>
             <p>
-              To the maximum extent permitted by law, SOLcloser and its operators shall not be liable for:
+              To the maximum extent permitted by law, SolPit and its operators shall not be liable for:
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Any financial losses incurred through use of the Service</li>
@@ -219,7 +219,7 @@ export default function RiskDisclaimer() {
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">8. No Guarantees or Promises</h2>
             <p>
-              SOLcloser makes no guarantees, promises, or representations regarding:
+              SolPit makes no guarantees, promises, or representations regarding:
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>The amount of SOL you will be able to reclaim</li>
@@ -237,7 +237,7 @@ export default function RiskDisclaimer() {
               You acknowledge and agree that:
             </p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>You are using SOLcloser at your own risk</li>
+              <li>You are using SolPit at your own risk</li>
               <li>You are solely responsible for your decisions</li>
               <li>You have the technical knowledge to use blockchain applications</li>
               <li>You understand the risks involved in cryptocurrency transactions</li>
@@ -251,13 +251,13 @@ export default function RiskDisclaimer() {
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">10. Acceptance of Risks</h2>
             <div className="p-6 bg-yellow-500/10 border-2 border-yellow-500/50 rounded-lg">
               <p className="font-bold text-yellow-400 mb-4">
-                BY USING SOLCLOSER, YOU ACKNOWLEDGE THAT:
+                BY USING SOLPIT, YOU ACKNOWLEDGE THAT:
               </p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>You have read and understood this Risk Disclaimer</li>
                 <li>You are aware of the inherent risks of cryptocurrencies and blockchain technology</li>
                 <li>You accept full responsibility for all your decisions and actions</li>
-                <li>You understand that SOLcloser provides no financial advice</li>
+                <li>You understand that SolPit provides no financial advice</li>
                 <li>You are solely responsible for your wallet security</li>
                 <li>You accept that blockchain transactions are irreversible</li>
                 <li>You will comply with all applicable laws and regulations</li>

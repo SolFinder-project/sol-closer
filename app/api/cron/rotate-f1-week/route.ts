@@ -1,0 +1,51 @@
+import { NextResponse } from 'next/server';
+import { closeCurrentWeekAndStartNext } from '@/lib/supabase/game';
+import { getSupabaseAdmin } from '@/lib/supabase/server';
+
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
+/**
+ * GET /api/cron/rotate-f1-week
+ * Called by Vercel Cron every Sunday at 17:00 UTC.
+ * Auth: Authorization: Bearer <CRON_SECRET>. Closes events whose week has ended and creates next week's events.
+ */
+export async function GET(request: Request) {
+  const authHeader = request.headers.get('authorization');
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    console.error('❌ Unauthorized cron attempt: rotate-f1-week');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const adminClient = getSupabaseAdmin();
+  if (!adminClient) {
+    return NextResponse.json(
+      { error: 'Server misconfiguration: SUPABASE_SERVICE_ROLE_KEY required for rotate-f1-week' },
+      { status: 500 }
+    );
+  }
+
+  try {
+    const result = await closeCurrentWeekAndStartNext(false, false, adminClient);
+    if (!result.ok) {
+      return NextResponse.json(
+        { error: result.error ?? 'Rotation failed', closed: result.closed },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json({
+      success: true,
+      closed: result.closed ?? [],
+      created: result.created,
+    });
+  } catch (error) {
+    console.error('❌ Cron rotate-f1-week failed:', error);
+    return NextResponse.json(
+      {
+        error: 'Rotation failed',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}

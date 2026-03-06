@@ -7,24 +7,20 @@ interface Transaction {
   wallet_address: string;
   accounts_closed: number;
   net_received: number;
-  timestamp: number;
+  /** Unix ms or ISO string (Supabase timestamptz). */
+  timestamp: number | string;
+  reclaim_type?: string | null;
 }
 
-export default function LiveFeed() {
+interface LiveFeedProps {
+  /** When this value changes, feed refetches immediately (e.g. after a reclaim). */
+  refreshTrigger?: number;
+}
+
+export default function LiveFeed({ refreshTrigger = 0 }: LiveFeedProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
-
-  useEffect(() => {
-    loadTransactions();
-    
-    // Refresh toutes les 30 secondes
-    const interval = setInterval(() => {
-      loadTransactions();
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, []);
 
   const loadTransactions = async () => {
     const data = await getRecentTransactions(5);
@@ -33,12 +29,19 @@ export default function LiveFeed() {
     setLoading(false);
   };
 
+  useEffect(() => {
+    loadTransactions();
+    const interval = setInterval(loadTransactions, 15000);
+    return () => clearInterval(interval);
+  }, [refreshTrigger]);
+
   const formatWallet = (address: string) => {
     return `${address.slice(0, 4)}...${address.slice(-4)}`;
   };
 
-  const formatTimeAgo = (timestamp: number) => {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  const formatTimeAgo = (timestamp: number | string) => {
+    const ms = typeof timestamp === 'number' ? timestamp : new Date(timestamp).getTime();
+    const seconds = Math.floor((Date.now() - ms) / 1000);
     
     if (seconds < 60) return 'now';
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
@@ -82,7 +85,7 @@ export default function LiveFeed() {
       <div className="space-y-2">
         {transactions.map((tx, index) => (
           <div
-            key={`${tx.wallet_address}-${tx.timestamp}`}
+            key={`${tx.wallet_address}-${typeof tx.timestamp === 'string' ? tx.timestamp : tx.timestamp}`}
             className="flex items-center justify-between p-2 md:p-3 rounded-lg bg-dark-bg/50 hover:bg-dark-bg transition-colors gap-2"
             style={{ animationDelay: `${index * 100}ms` }}
           >
@@ -94,7 +97,7 @@ export default function LiveFeed() {
                   {formatWallet(tx.wallet_address)}
                 </span>
                 <span className="text-gray-500 text-[10px] md:text-sm">
-                  {tx.accounts_closed} acc.
+                  {tx.accounts_closed} item{tx.accounts_closed !== 1 ? 's' : ''}
                 </span>
               </div>
             </div>
@@ -115,7 +118,7 @@ export default function LiveFeed() {
       {/* Footer */}
       <div className="mt-3 md:mt-4 pt-2 md:pt-3 border-t border-dark-border flex items-center justify-center">
         <span className="text-[10px] md:text-xs text-gray-500">
-          🔄 Auto-refreshes every 30s
+          🔄 Auto-refreshes every 15s
         </span>
       </div>
     </div>

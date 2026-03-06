@@ -25,7 +25,7 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">1. Préambule</h2>
             <p>
-              La présente Politique de Confidentialité a pour objectif d'informer les utilisateurs de SOLcloser 
+              La présente Politique de Confidentialité a pour objectif d'informer les utilisateurs de SolPit 
               sur la manière dont leurs données personnelles sont collectées, traitées et protégées, conformément :
             </p>
             <ul className="list-disc pl-6 space-y-2">
@@ -52,7 +52,7 @@ export default function PrivacyPolicy() {
             
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">3.1 Données Blockchain (Publiques)</h3>
             <p>
-              Lorsque vous utilisez SOLcloser, nous interagissons avec des données publiques de la blockchain Solana :
+              Lorsque vous utilisez SolPit, nous interagissons avec des données publiques de la blockchain Solana :
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li><strong>Adresse de portefeuille Solana :</strong> Votre clé publique (wallet address)</li>
@@ -83,7 +83,7 @@ export default function PrivacyPolicy() {
             </p>
 
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">3.3 Données NON Collectées</h3>
-            <p>SOLcloser ne collecte explicitement PAS :</p>
+            <p>SolPit ne collecte explicitement PAS :</p>
             <ul className="list-disc pl-6 space-y-2">
               <li>❌ Adresses email</li>
               <li>❌ Noms, prénoms ou informations d'identité</li>
@@ -98,7 +98,7 @@ export default function PrivacyPolicy() {
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">4. Finalités du Traitement</h2>
             <p>Les données collectées sont utilisées exclusivement pour :</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Fournir et exploiter le Service SOLcloser</li>
+              <li>Fournir et exploiter le Service SolPit</li>
               <li>Traiter les transactions blockchain</li>
               <li>Calculer et distribuer les récompenses de parrainage</li>
               <li>Afficher les statistiques globales et le classement</li>

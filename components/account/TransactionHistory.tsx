@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { getUserTransactions } from '@/lib/supabase/transactions';
+import type { ReclaimType } from '@/lib/supabase/transactions';
 
 interface Transaction {
   id: string;
@@ -13,8 +14,25 @@ interface Transaction {
   net_received: number;
   referrer_code?: string;
   referral_earned?: number;
-  timestamp: number;
+  /** Unix ms or ISO string (Supabase timestamptz returns string). */
+  timestamp: number | string;
   created_at: string;
+  reclaim_type?: ReclaimType | null;
+}
+
+function getReclaimTypeLabel(type?: ReclaimType | null): string {
+  switch (type) {
+    case 'empty': return 'Empty accounts';
+    case 'dust': return 'Dust';
+    case 'pump': return 'Pump PDA';
+    case 'pumpswap': return 'PumpSwap PDA';
+    case 'drift': return 'Drift account';
+    case 'nft_burn': return 'NFT burn';
+    case 'openorders': return 'OpenOrders'; // legacy
+    case 'full_reclaim': return 'Full reclaim';
+    case 'cnft_close': return 'cNFT close';
+    default: return 'Reclaim';
+  }
 }
 
 export default function TransactionHistory() {
@@ -29,7 +47,7 @@ export default function TransactionHistory() {
         setLoading(false);
         return;
       }
-
+      setTransactions([]);
       setLoading(true);
       const data = await getUserTransactions(publicKey.toString());
       setTransactions(data || []);
@@ -39,7 +57,7 @@ export default function TransactionHistory() {
     loadTransactions();
   }, [publicKey]);
 
-  const formatDate = (timestamp: number) => {
+  const formatDate = (timestamp: number | string) => {
     return new Date(timestamp).toLocaleString();
   };
 
@@ -49,102 +67,108 @@ export default function TransactionHistory() {
 
   if (!publicKey) {
     return (
-      <div className="text-center py-20">
-        <div className="text-6xl mb-4">👛</div>
-        <h2 className="text-2xl font-bold mb-4">Wallet Not Connected</h2>
-        <p className="text-gray-400">Connect your wallet to view transaction history</p>
+      <div className="animate-slide-up max-w-xl mx-auto">
+        <div className="card-cyber text-center py-10 md:py-12 border-dark-border">
+          <div className="text-5xl md:text-6xl mb-4">👛</div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Transaction History</p>
+          <h2 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-orbitron)] text-white mb-3">Connect your wallet</h2>
+          <p className="text-sm text-gray-400">Connect your wallet to view your past reclaim transactions.</p>
+        </div>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="text-center py-20">
-        <div className="inline-block animate-spin text-6xl">⚡</div>
-        <p className="text-gray-400 mt-4">Loading transactions...</p>
+      <div className="card-cyber text-center py-10 md:py-12 border-dark-border">
+        <div className="text-4xl mb-3 animate-spin">⏳</div>
+        <p className="text-sm text-gray-400">Loading transactions...</p>
       </div>
     );
   }
 
   if (transactions.length === 0) {
     return (
-      <div className="text-center py-20">
-        <div className="text-6xl mb-4">📜</div>
-        <h2 className="text-2xl font-bold mb-4">No Transactions Yet</h2>
-        <p className="text-gray-400">Start closing accounts to see your transaction history!</p>
+      <div className="animate-slide-up max-w-xl mx-auto">
+        <div className="card-cyber text-center py-10 md:py-12 border-dark-border">
+          <div className="text-5xl md:text-6xl mb-4">📜</div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Transaction History</p>
+          <h2 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-orbitron)] text-white mb-3">No transactions yet</h2>
+          <p className="text-sm text-gray-400">Start closing accounts to see your history here.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="animate-slide-up">
-      <div className="text-center mb-12">
-        <h1 className="text-5xl font-bold mb-4">Transaction History</h1>
-        <p className="text-gray-400 text-lg">View all your past account closures</p>
+    <div className="animate-slide-up space-y-8 md:space-y-10">
+      <div className="text-center mb-8 md:mb-10">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Transaction History</p>
+        <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold font-[family-name:var(--font-orbitron)] text-white mb-2">Your reclaims</h1>
+        <p className="text-sm text-gray-400">All reclaims: empty accounts, dust, Pump PDA, PumpSwap PDA, Drift, NFT burn, cNFT close.</p>
       </div>
 
-      <div className="grid md:grid-cols-4 gap-4 mb-8">
-        <div className="card-cyber">
-          <div className="text-sm text-gray-400 mb-1">Total Transactions</div>
-          <div className="text-3xl font-bold">{transactions.length}</div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="card-cyber border-dark-border bg-dark-card/80 text-center py-5 px-4">
+          <p className="text-xs text-gray-400 mb-1">Transactions</p>
+          <p className="text-xl md:text-2xl font-bold font-[family-name:var(--font-orbitron)] text-neon-purple">{transactions.length}</p>
         </div>
-        <div className="card-cyber">
-          <div className="text-sm text-gray-400 mb-1">Total Accounts Closed</div>
-          <div className="text-3xl font-bold">
+        <div className="card-cyber border-dark-border bg-dark-card/80 text-center py-5 px-4">
+          <p className="text-xs text-gray-400 mb-1">Items closed</p>
+          <p className="text-xl md:text-2xl font-bold font-[family-name:var(--font-orbitron)] text-neon-pink">
             {transactions.reduce((sum, tx) => sum + tx.accounts_closed, 0)}
-          </div>
+          </p>
         </div>
-        <div className="card-cyber">
-          <div className="text-sm text-gray-400 mb-1">Total SOL Reclaimed</div>
-          <div className="text-3xl font-bold">
+        <div className="card-cyber border-dark-border bg-dark-card/80 text-center py-5 px-4">
+          <p className="text-xs text-gray-400 mb-1">SOL Reclaimed</p>
+          <p className="text-xl md:text-2xl font-bold font-[family-name:var(--font-orbitron)] text-neon-cyan">
             {transactions.reduce((sum, tx) => sum + tx.sol_reclaimed, 0).toFixed(4)}
-          </div>
+          </p>
         </div>
-        <div className="card-cyber">
-          <div className="text-sm text-gray-400 mb-1">Total Fees Paid</div>
-          <div className="text-3xl font-bold">
+        <div className="card-cyber border-dark-border bg-dark-card/80 text-center py-5 px-4">
+          <p className="text-xs text-gray-400 mb-1">Fees Paid</p>
+          <p className="text-xl md:text-2xl font-bold font-[family-name:var(--font-orbitron)] text-neon-green">
             {transactions.reduce((sum, tx) => sum + tx.fee, 0).toFixed(4)}
-          </div>
+          </p>
         </div>
       </div>
 
-      <div className="space-y-4">
-        {transactions.map((tx) => (
-          <div key={tx.id} className="card-cyber">
-            <div className="flex flex-col gap-4">
-              <div>
-                <div className="font-bold text-lg mb-2">
-                  Closed {tx.accounts_closed} Accounts
-                </div>
-                <div className="text-sm text-gray-400 mb-2">
-                  {formatDate(tx.timestamp)}
-                </div>
-                <div className="text-xs text-gray-500 font-mono">
-                  Signature: {formatSignature(tx.signature)}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
+      <div>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Transactions</h2>
+        <div className="space-y-3 md:space-y-4">
+          {transactions.map((tx) => (
+            <div key={tx.id} className="card-cyber border-dark-border p-4 md:p-5">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <div>
-                  <div className="text-xs text-gray-400">Reclaimed</div>
-                  <div className="font-bold text-neon-cyan">{tx.sol_reclaimed.toFixed(4)} SOL</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-bold text-base md:text-lg text-white">Closed {tx.accounts_closed} item{tx.accounts_closed !== 1 ? 's' : ''}</p>
+                    <span className="text-xs px-2 py-0.5 rounded bg-white/10 text-gray-300">{getReclaimTypeLabel(tx.reclaim_type)}</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">{formatDate(tx.timestamp)}</p>
+                  <p className="text-xs text-gray-500 font-mono mt-0.5">Sig: {formatSignature(tx.signature)}</p>
                 </div>
-                <div>
-                  <div className="text-xs text-gray-400">Fee</div>
-                  <div className="font-bold text-neon-pink">{tx.fee.toFixed(4)} SOL</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-400">Received</div>
-                  <div className="font-bold text-neon-green">{tx.net_received.toFixed(4)} SOL</div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+                  <div className="flex justify-between sm:block p-2 rounded-lg bg-dark-bg">
+                    <span className="text-xs text-gray-400">Reclaimed</span>
+                    <span className="font-semibold text-neon-cyan text-sm">{tx.sol_reclaimed.toFixed(4)} SOL</span>
+                  </div>
+                  <div className="flex justify-between sm:block p-2 rounded-lg bg-dark-bg">
+                    <span className="text-xs text-gray-400">Fee</span>
+                    <span className="font-semibold text-neon-pink text-sm">{tx.fee.toFixed(4)} SOL</span>
+                  </div>
+                  <div className="flex justify-between sm:block p-2 rounded-lg bg-dark-bg">
+                    <span className="text-xs text-gray-400">Received</span>
+                    <span className="font-semibold text-neon-green text-sm">{tx.net_received.toFixed(4)} SOL</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      <div className="mt-8 text-center">
-        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-sm">
+      <div className="text-center">
+        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-xs md:text-sm">
           <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
           Live Data from Supabase
         </span>

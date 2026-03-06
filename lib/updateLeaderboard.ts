@@ -1,18 +1,24 @@
 import { google } from 'googleapis';
 
-// Décode les credentials Google depuis Vercel
-const credentials = JSON.parse(
-  Buffer.from(process.env.GOOGLE_CREDENTIALS!, 'base64').toString('utf-8')
-);
+// Lazy init pour éviter Buffer.from(undefined) au build (env non injecté)
+let _sheets: ReturnType<typeof google.sheets> | null = null;
 
-// Authentification avec Google
-const auth = new google.auth.GoogleAuth({
-  credentials,
-  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-});
-
-// Client Google Sheets
-const sheets = google.sheets({ version: 'v4', auth });
+function getSheets() {
+  if (_sheets) return _sheets;
+  const encoded = process.env.GOOGLE_CREDENTIALS;
+  if (!encoded || typeof encoded !== 'string') {
+    throw new Error('GOOGLE_CREDENTIALS is not set');
+  }
+  const credentials = JSON.parse(
+    Buffer.from(encoded, 'base64').toString('utf-8')
+  );
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+  _sheets = google.sheets({ version: 'v4', auth });
+  return _sheets;
+}
 
 // Fonction pour mettre à jour Top Users
 export async function updateTopUsers() {
@@ -26,18 +32,19 @@ export async function updateTopUsers() {
     { wallet: '3mN4...test3', solReclaimed: 0.543, txHash: 'txGHI789' },
   ];
   
-  // Trie par SOL réclamé (du plus grand au plus petit)
+  // Sort by SOL reclaimed (highest first)
   const sorted = testUsers.sort((a, b) => b.solReclaimed - a.solReclaimed);
   
-  // Formate pour Google Sheets
+  // Format for Google Sheets
   const rows = sorted.map((user, index) => [
-    index + 1,  // Rang
+    index + 1,  // Rank
     user.wallet,
-    user.solReclaimed.toFixed(4),  // 4 décimales
+    user.solReclaimed.toFixed(4),  // 4 decimals
     `https://solscan.io/tx/${user.txHash}`,
   ]);
   
   // Envoie à Google Sheets
+  const sheets = getSheets();
   await sheets.spreadsheets.values.update({
     spreadsheetId: process.env.GOOGLE_SHEET_ID!,
     range: "'🏆 Top Users'!A2:D100",
@@ -68,6 +75,7 @@ export async function updateTopReferrers() {
     'Verified ✓',
   ]);
   
+  const sheets = getSheets();
   await sheets.spreadsheets.values.update({
     spreadsheetId: process.env.GOOGLE_SHEET_ID!,
     range: "'🏆 Top Referrers'!A2:D100",
@@ -98,6 +106,7 @@ export async function updateTopPosters() {
     poster.lastTweet,
   ]);
   
+  const sheets = getSheets();
   await sheets.spreadsheets.values.update({
     spreadsheetId: process.env.GOOGLE_SHEET_ID!,
     range: "'🏆 Top Posters'!A2:D100",

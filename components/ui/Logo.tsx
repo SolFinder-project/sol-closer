@@ -99,12 +99,12 @@ export default function Logo({ size = 'md', showText = true, className = '' }: L
         <div className="flex flex-col min-w-0">
           <h1 className={`${sizes[size].text} font-bold font-[family-name:var(--font-orbitron)] leading-none drop-shadow-lg truncate`}>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-neon-pink to-neon-cyan animate-glow">
-              SOLcloser
+              SolPit
             </span>
           </h1>
           {sizes[size].tagline !== 'hidden' && (
             <p className={`${sizes[size].tagline} text-gray-400 uppercase tracking-widest font-mono mt-1`}>
-              RECLAIM • EARN • GROW
+              RECLAIM • REFUEL • RACE
             </p>
           )}
         </div>

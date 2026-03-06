@@ -26,7 +26,7 @@ export default function TermsOfService() {
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">1. Préambule</h2>
             <p>
               Les présentes Conditions Générales d'Utilisation (ci-après "CGU") régissent l'utilisation 
-              de l'application décentralisée SOLcloser (ci-après "le Service"), éditée par :
+              de l'application décentralisée SolPit (ci-après « le Service »), éditée par :
             </p>
             <div className="p-4 bg-dark-card border border-dark-border rounded-lg mt-4">
               <p>
@@ -46,7 +46,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">2. Objet</h2>
             <p>
-              SOLcloser est une application décentralisée permettant aux utilisateurs d'identifier et 
+              SolPit est une application décentralisée permettant aux utilisateurs d'identifier et 
               de fermer les comptes de tokens SPL inutilisés sur la blockchain Solana afin de récupérer 
               les dépôts de loyer (SOL).
             </p>
@@ -91,7 +91,7 @@ export default function TermsOfService() {
             
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">5.1 Commission de Service</h3>
             <p>
-              SOLcloser prélève une commission de 20% sur le montant de SOL récupéré lors de la fermeture 
+              SolPit prélève une commission de 20% sur le montant de SOL récupéré lors de la fermeture 
               des comptes de tokens. Cette commission est automatiquement déduite lors du traitement de 
               la transaction.
             </p>
@@ -136,19 +136,19 @@ export default function TermsOfService() {
             
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">7.1 Limitation de Responsabilité</h3>
             <p>
-              Le Service est fourni "en l'état" et "selon disponibilité". SOLcloser ne garantit pas que 
+              Le Service est fourni "en l'état" et "selon disponibilité". SolPit ne garantit pas que 
               le Service sera exempt d'erreurs, de virus ou autres éléments nuisibles, ni que les défauts 
               seront corrigés.
             </p>
             <p>
-              SOLcloser ne pourra être tenu responsable des dommages directs ou indirects causés au matériel 
+              SolPit ne pourra être tenu responsable des dommages directs ou indirects causés au matériel 
               de l'utilisateur lors de l'accès au Service, ni des dommages résultant de l'utilisation ou de 
               l'impossibilité d'utiliser le Service.
             </p>
 
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">7.2 Absence de Conseil</h3>
             <p>
-              SOLcloser ne fournit aucun conseil en investissement, conseil financier, conseil juridique 
+              SolPit ne fournit aucun conseil en investissement, conseil financier, conseil juridique 
               ou conseil fiscal. Les utilisateurs sont seuls responsables de leurs décisions d'utilisation 
               du Service et doivent consulter leurs propres conseillers professionnels si nécessaire.
             </p>
@@ -170,7 +170,7 @@ export default function TermsOfService() {
             <h3 className="text-xl font-bold text-neon-purple mt-6 mb-3">7.4 Sécurité du Portefeuille</h3>
             <p>
               L'utilisateur est seul responsable de la sécurité de son portefeuille et de ses clés privées. 
-              SOLcloser n'a jamais accès aux clés privées des utilisateurs et ne peut pas récupérer les 
+              SolPit n'a jamais accès aux clés privées des utilisateurs et ne peut pas récupérer les 
               fonds perdus ou annuler des transactions.
             </p>
           </section>
@@ -179,11 +179,11 @@ export default function TermsOfService() {
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">8. Propriété Intellectuelle</h2>
             <p>
               L'ensemble des éléments du Service (structure, logiciels, textes, images, graphismes, logo, 
-              icônes, etc.) est la propriété exclusive de SOLcloser, à l'exception des marques, logos ou 
+              icônes, etc.) est la propriété exclusive de SolPit, à l'exception des marques, logos ou 
               contenus appartenant à d'autres sociétés partenaires ou auteurs.
             </p>
             <p>
-              Le code source de SOLcloser est publié sous licence Creative Commons Attribution-NonCommercial-ShareAlike 
+              Le code source de SolPit est publié sous licence Creative Commons Attribution-NonCommercial-ShareAlike 
               4.0 International (CC BY-NC-SA 4.0). Toute utilisation commerciale nécessite une autorisation 
               explicite écrite.
             </p>
@@ -192,7 +192,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">9. Données Personnelles</h2>
             <p>
-              SOLcloser s'engage à respecter la vie privée de ses utilisateurs conformément au Règlement 
+              SolPit s'engage à respecter la vie privée de ses utilisateurs conformément au Règlement 
               Général sur la Protection des Données (RGPD) et à la loi Informatique et Libertés.
             </p>
             <p>
@@ -208,11 +208,11 @@ export default function TermsOfService() {
               les gains réalisés en cryptomonnaies auprès de l'administration fiscale.
             </p>
             <p>
-              Les gains provenant de la récupération de SOL via SOLcloser peuvent être soumis à l'impôt 
+              Les gains provenant de la récupération de SOL via SolPit peuvent être soumis à l'impôt 
               sur le revenu. Il appartient à chaque utilisateur de se conformer à ses obligations fiscales.
             </p>
             <p>
-              SOLcloser ne fournit aucun conseil fiscal et recommande aux utilisateurs de consulter un 
+              SolPit ne fournit aucun conseil fiscal et recommande aux utilisateurs de consulter un 
               conseiller fiscal professionnel.
             </p>
           </section>
@@ -221,7 +221,7 @@ export default function TermsOfService() {
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">11. Lutte Anti-Blanchiment</h2>
             <p>
               Conformément aux obligations de lutte contre le blanchiment d'argent et le financement du 
-              terrorisme, SOLcloser se réserve le droit de suspendre ou refuser l'accès au Service en cas 
+              terrorisme, SolPit se réserve le droit de suspendre ou refuser l'accès au Service en cas 
               de soupçon d'activité frauduleuse ou illégale.
             </p>
             <p>
@@ -233,7 +233,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">12. Modification du Service et des CGU</h2>
             <p>
-              SOLcloser se réserve le droit de modifier, suspendre ou interrompre tout ou partie du Service 
+              SolPit se réserve le droit de modifier, suspendre ou interrompre tout ou partie du Service 
               à tout moment, sans préavis et sans indemnité.
             </p>
             <p>
@@ -246,7 +246,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">13. Résiliation</h2>
             <p>
-              SOLcloser se réserve le droit de suspendre ou résilier l'accès d'un utilisateur au Service, 
+              SolPit se réserve le droit de suspendre ou résilier l'accès d'un utilisateur au Service, 
               sans préavis ni indemnité, en cas de violation des présentes CGU ou d'utilisation frauduleuse 
               du Service.
             </p>
@@ -257,7 +257,7 @@ export default function TermsOfService() {
             <p>
               Conformément à l'article L.612-1 du Code de la consommation, tout consommateur a le droit de 
               recourir gratuitement à un médiateur de la consommation en vue de la résolution amiable d'un 
-              litige qui l'opposerait à SOLcloser.
+              litige qui l'opposerait à SolPit.
             </p>
             <p>
               Plateforme de règlement en ligne des litiges (RLL) :<br />
@@ -297,7 +297,7 @@ export default function TermsOfService() {
 
           <div className="mt-12 pt-8 border-t border-dark-border">
             <p className="text-sm text-gray-500">
-              En utilisant SOLcloser, vous reconnaissez avoir lu, compris et accepté les présentes 
+              En utilisant SolPit, vous reconnaissez avoir lu, compris et accepté les présentes 
               Conditions Générales d'Utilisation.
             </p>
           </div>
