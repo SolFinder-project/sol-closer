@@ -9,17 +9,16 @@ import {
 import { useEffect, useMemo } from 'react';
 
 function getRpcEndpoint(): string {
-  const heliusKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY?.trim();
   const network = process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'mainnet-beta';
+  const explicitRpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.trim();
+  if (explicitRpc) return explicitRpc;
+  const heliusKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY?.trim();
   if (heliusKey) {
     return network === 'mainnet-beta'
       ? `https://mainnet.helius-rpc.com/?api-key=${heliusKey}`
       : `https://devnet.helius-rpc.com/?api-key=${heliusKey}`;
   }
-  return (
-    process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
-    (network === 'mainnet-beta' ? 'https://api.mainnet-beta.solana.com' : 'https://api.devnet.solana.com')
-  );
+  return network === 'mainnet-beta' ? 'https://api.mainnet-beta.solana.com' : 'https://api.devnet.solana.com';
 }
 
 /** En dev, supprime le spam des erreurs WebSocket Helius (ws error / Close received after close). */

@@ -27,12 +27,15 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const defaultFee = Number(process.env.NEXT_PUBLIC_SERVICE_FEE_PERCENTAGE || 20);
+  const defaultReferral = Number(process.env.NEXT_PUBLIC_REFERRAL_FEE_PERCENTAGE || 10);
+
   try {
     const [feePercent, referralPercent] = await Promise.all([
       getEffectiveReclaimFeePercent(wallet),
       referrer && isValidSolanaAddress(referrer)
         ? getEffectiveReferralPercent(referrer)
-        : Promise.resolve(Number(process.env.NEXT_PUBLIC_REFERRAL_FEE_PERCENTAGE || 10)),
+        : Promise.resolve(defaultReferral),
     ]);
 
     return NextResponse.json({
@@ -41,9 +44,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (e) {
     console.error('[nft-creator/effective-fee]', e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'Failed to get effective fee' },
-      { status: 500 }
-    );
+    // Return defaults so reclaim flow is not blocked (e.g. RPC 401 / tier fetch failure).
+    return NextResponse.json({
+      feePercent: defaultFee,
+      referralPercent: defaultReferral,
+    });
   }
 }
