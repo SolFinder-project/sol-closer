@@ -43,6 +43,37 @@ export function getConnection(): Connection {
   return connectionInstance;
 }
 
+/**
+ * Use in API routes that are called from the browser. Returns a Connection that uses the app's
+ * /api/rpc proxy with the client's Origin/Referer, so Helius "Allowed Domains" accepts the request.
+ * If no origin is available (e.g. server-to-server), falls back to getConnection() (direct Helius).
+ */
+export function getConnectionForRequest(request: Request): Connection {
+  const origin = request.headers.get('origin')?.trim();
+  const referer = request.headers.get('referer')?.trim();
+  let baseUrl = origin;
+  if (!baseUrl && referer) {
+    try {
+      baseUrl = new URL(referer).origin;
+    } catch {
+      // ignore
+    }
+  }
+  if (baseUrl) {
+    const rpcUrl = `${baseUrl.replace(/\/$/, '')}/api/rpc`;
+    const httpHeaders: Record<string, string> = {
+      ...(origin && { Origin: origin }),
+      ...(referer && { Referer: referer }),
+    };
+    return new Connection(rpcUrl, {
+      commitment: COMMITMENT as Commitment,
+      confirmTransactionInitialTimeout: 60000,
+      httpHeaders,
+    });
+  }
+  return getConnection();
+}
+
 export function resetConnection(): void {
   connectionInstance = null;
 }

@@ -5,7 +5,7 @@
  */
 import { NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
-import { getConnection } from '@/lib/solana/connection';
+import { getConnectionForRequest } from '@/lib/solana/connection';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     const publicKey = new PublicKey(publicKeyStr);
-    const connection = getConnection();
+    const connection = getConnectionForRequest(request);
 
     const [{ Marinade, MarinadeConfig }, { default: BN }] = await Promise.all([
       import('@marinade.finance/marinade-ts-sdk'),
