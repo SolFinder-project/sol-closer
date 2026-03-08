@@ -15,7 +15,11 @@ function isPublicRpc(url: string): boolean {
   return n === PUBLIC_MAINNET || n === PUBLIC_DEVNET;
 }
 
+// Client-only: use RPC proxy so Helius key is never sent from the browser (avoids 401 / Allowed Domains).
 function getRpcEndpoint(): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}/api/rpc`;
+  }
   const network = process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'mainnet-beta';
   const explicitRpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.trim();
   if (explicitRpc && !isPublicRpc(explicitRpc)) return explicitRpc;

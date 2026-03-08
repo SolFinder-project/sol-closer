@@ -13,13 +13,17 @@ function isPublicSolanaRpc(url: string): boolean {
 }
 
 export function getRpcUrl(): string {
+  // In the browser, use our RPC proxy so the Helius key stays server-side (avoids 401 / Allowed Domains).
+  if (typeof window !== 'undefined') {
+    const origin = (window as Window).location?.origin;
+    if (origin) return `${origin}/api/rpc`;
+  }
+
   const network = process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'mainnet-beta';
   const explicitRpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.trim();
-  // Use explicit URL only if set and NOT the public Solana RPC (public RPC returns 403 from browser).
-  if (explicitRpc && !isPublicSolanaRpc(explicitRpc)) {
-    return explicitRpc;
-  }
-  const heliusKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY?.trim();
+  if (explicitRpc && !isPublicSolanaRpc(explicitRpc)) return explicitRpc;
+
+  const heliusKey = process.env.HELIUS_API_KEY?.trim() || process.env.NEXT_PUBLIC_HELIUS_API_KEY?.trim();
   if (heliusKey) {
     return network === 'mainnet-beta'
       ? `https://mainnet.helius-rpc.com/?api-key=${heliusKey}`
