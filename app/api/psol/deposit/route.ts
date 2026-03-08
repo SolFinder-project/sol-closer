@@ -4,7 +4,7 @@
  */
 import { NextResponse } from 'next/server';
 import { PublicKey, Transaction } from '@solana/web3.js';
-import { getConnection } from '@/lib/solana/connection';
+import { getConnectionForRequest } from '@/lib/solana/connection';
 import { PSOL_STAKE_POOL_ADDRESS } from '@/lib/solana/psolStake';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     const publicKey = new PublicKey(publicKeyStr);
-    const connection = getConnection();
+    const connection = getConnectionForRequest(request);
 
     const { depositSol } = await import('@solana/spl-stake-pool');
 
