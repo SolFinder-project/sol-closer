@@ -47,10 +47,20 @@ export async function POST(request: NextRequest) {
   }
 
   const heliusHost = getHeliusBaseHost();
+  // Helius "Allowed Domains" checks the Origin/Referer of the request. When the proxy calls
+  // Helius from the server, no browser Origin is sent, so Helius rejects with 401. Forward
+  // the client's Origin/Referer so Helius can allow the request when the domain is allowlisted.
+  const origin = request.headers.get('origin');
+  const referer = request.headers.get('referer');
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...(origin && { Origin: origin }),
+    ...(referer && { Referer: referer }),
+  };
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
