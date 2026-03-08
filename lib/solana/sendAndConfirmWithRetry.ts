@@ -23,11 +23,8 @@ export async function sendAndConfirmWithRetry(
       const signature = await connection.sendRawTransaction(
         Buffer.isBuffer(signedSerialized) ? signedSerialized : Buffer.from(signedSerialized)
       );
-      try {
-        await connection.confirmTransaction(signature, 'confirmed');
-      } catch {
-        // Timeout or WebSocket failure; tx often succeeds on-chain. Do not throw.
-      }
+      // Return immediately so UI shows success. Confirm in background (often fails over HTTP proxy; tx still lands).
+      void connection.confirmTransaction(signature, 'confirmed').catch(() => {});
       return signature;
     } catch (err) {
       lastError = err;

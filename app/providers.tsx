@@ -32,21 +32,36 @@ function getRpcEndpoint(): string {
   return network === 'mainnet-beta' ? PUBLIC_MAINNET : PUBLIC_DEVNET;
 }
 
+function isWsNoise(msg: string): boolean {
+  return (
+    msg.includes('ws error') ||
+    msg.includes('WebSocket connection') && msg.includes('failed') ||
+    (msg.includes('WebSocket') && msg.includes('failed')) ||
+    msg.includes('Close received after close') ||
+    (msg.includes('wss://') && msg.includes('failed'))
+  );
+}
+
 /** Suppress WebSocket errors when using HTTP-only RPC proxy (confirmTransaction/subscriptions fail; tx still succeeds). */
 function useSuppressHeliusWsSpam() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const raw = console.error;
+    const rawError = console.error;
+    const rawWarn = console.warn;
     console.error = (...args: unknown[]) => {
       const msg = String(args?.[0] ?? '');
-      if (
-        msg.includes('ws error') ||
-        (msg.includes('WebSocket connection') && msg.includes('failed')) ||
-        msg.includes('Close received after close')
-      ) return;
-      raw.apply(console, args);
+      if (isWsNoise(msg)) return;
+      rawError.apply(console, args);
     };
-    return () => { console.error = raw; };
+    console.warn = (...args: unknown[]) => {
+      const msg = String(args?.[0] ?? '');
+      if (isWsNoise(msg)) return;
+      rawWarn.apply(console, args);
+    };
+    return () => {
+      console.error = rawError;
+      console.warn = rawWarn;
+    };
   }, []);
 }
 

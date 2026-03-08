@@ -137,11 +137,7 @@ export default function PostReclaimSwap({
         : '—';
       setSuccess(`Swapped ${amountSwappedSol.toFixed(6)} SOL. You received ${outAmt} ${selectedToken?.symbol ?? ''}. Verify: solscan.io/tx/${sig}`);
       onSwapDone?.(amountSwappedSol);
-      try {
-        await connection.confirmTransaction(sig, 'confirmed');
-      } catch {
-        // Tx was sent; confirmation may timeout over HTTP proxy. Do not show error.
-      }
+      void connection.confirmTransaction(sig, 'confirmed').catch(() => {});
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : 'Swap failed');
     } finally {
