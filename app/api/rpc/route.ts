@@ -11,6 +11,16 @@ const HELIUS_DEVNET = 'https://devnet.helius-rpc.com';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
+function getHeliusBaseHost(): string {
+  const network = process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'mainnet-beta';
+  const base = network === 'mainnet-beta' ? HELIUS_MAINNET : HELIUS_DEVNET;
+  try {
+    return new URL(base).host;
+  } catch {
+    return base;
+  }
+}
+
 function getHeliusUrl(): string | null {
   const key = process.env.HELIUS_API_KEY?.trim() || process.env.NEXT_PUBLIC_HELIUS_API_KEY?.trim();
   if (!key) return null;
@@ -22,6 +32,7 @@ function getHeliusUrl(): string | null {
 export async function POST(request: NextRequest) {
   const url = getHeliusUrl();
   if (!url) {
+    console.warn('[api/rpc] key present: no, helius host: N/A — HELIUS_API_KEY or NEXT_PUBLIC_HELIUS_API_KEY required');
     return NextResponse.json(
       { error: 'RPC proxy misconfiguration: HELIUS_API_KEY or NEXT_PUBLIC_HELIUS_API_KEY required' },
       { status: 500 }
@@ -35,6 +46,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
+  const heliusHost = getHeliusBaseHost();
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -42,6 +54,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
+    const rpcError = typeof data === 'object' && data?.error ? (data.error as { message?: string })?.message : undefined;
+    console.info('[api/rpc] key present: yes, helius host:', heliusHost, 'helius status:', res.status, rpcError ? `rpc error: ${rpcError}` : '');
     return NextResponse.json(data, { status: res.status });
   } catch (e) {
     console.error('[api/rpc] proxy error', e);
