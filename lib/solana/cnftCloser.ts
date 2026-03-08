@@ -101,6 +101,13 @@ export async function closeCnftAssets(
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         const firstId = chunk[0]?.id?.slice(0, 8) ?? '?';
+        if ((msg.includes('block height exceeded') || msg.includes('has expired')) && msg.includes('Signature')) {
+          const sigMatch = msg.match(/Signature\s+([1-9A-HJ-NP-Za-km-z]{87,88})/);
+          if (sigMatch) {
+            allSignatures.push(sigMatch[1]);
+            continue;
+          }
+        }
         logger.error('cnft burn failed for chunk starting at', firstId, msg);
         throw new Error(`Failed to burn cNFT batch (${firstId}…): ${msg}`);
       }
