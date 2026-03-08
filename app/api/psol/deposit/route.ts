@@ -4,7 +4,7 @@
  */
 import { NextResponse } from 'next/server';
 import { PublicKey, Transaction } from '@solana/web3.js';
-import { getConnectionForRequest } from '@/lib/solana/connection';
+import { getConnection } from '@/lib/solana/connection';
 import { PSOL_STAKE_POOL_ADDRESS } from '@/lib/solana/psolStake';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     const publicKey = new PublicKey(publicKeyStr);
-    const connection = getConnectionForRequest(request);
+    const connection = getConnection();
 
     const { depositSol } = await import('@solana/spl-stake-pool');
 
@@ -60,7 +60,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ serializedTransaction: base64 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to build PSOL deposit transaction';
+    let message = err instanceof Error ? err.message : 'Failed to build PSOL deposit transaction';
+    if (/401|Unauthorized/i.test(message) && (/Authentication Required|<!doctype/i.test(message))) {
+      message = 'Vercel Deployment Protection is blocking requests. In Vercel: Project → Settings → Deployment Protection → set Preview to "None" or add your preview domain to Exceptions.';
+    } else if (/401|Unauthorized/i.test(message)) {
+      message = 'RPC rejected (401). In Helius dashboard, ensure the API key has no "Allowed Domains" only (or add Allowed IPs for Vercel). Set HELIUS_API_KEY in Vercel env and redeploy.';
+    }
     console.error('[api/psol/deposit]', err);
     return NextResponse.json({ error: message }, { status: 500 });
   }

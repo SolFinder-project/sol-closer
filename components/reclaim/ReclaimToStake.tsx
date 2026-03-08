@@ -92,7 +92,12 @@ export default function ReclaimToStake({
       const amountStakedSol = source === 'reclaimed' ? amountLamports / LAMPORTS_PER_SOL : undefined;
       onStakeDone?.(amountStakedSol);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Stake failed');
+      const raw = err instanceof Error ? err.message : 'Stake failed';
+      if (/401|Unauthorized|Authentication Required|<!doctype/i.test(raw)) {
+        setError('Blocked by Vercel or RPC: disable Deployment Protection for Preview (Vercel → Settings → Deployment Protection) or set Helius key without Allowed Domains only.');
+      } else {
+        setError(raw);
+      }
     } finally {
       setStakeLoading(null);
     }
