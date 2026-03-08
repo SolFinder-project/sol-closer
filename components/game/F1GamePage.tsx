@@ -260,8 +260,6 @@ export default function F1GamePage() {
         })
       );
       const sig = await sendTransaction(tx, connection, { skipPreflight: false });
-      await connection.confirmTransaction(sig, 'confirmed');
-
       const res = await fetch('/api/game/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

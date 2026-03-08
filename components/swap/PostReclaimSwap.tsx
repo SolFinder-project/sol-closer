@@ -130,14 +130,18 @@ export default function PostReclaimSwap({
         preflightCommitment: 'confirmed',
         maxRetries: 2,
       });
-      await connection.confirmTransaction(sig, 'confirmed');
       setQuote(null);
       const amountSwappedSol = amountLamports / 1e9;
       const outAmt = quote && typeof (quote as { outAmount?: string }).outAmount === 'string'
         ? (Number((quote as { outAmount: string }).outAmount) / 10 ** (selectedToken?.decimals ?? 6)).toFixed(4)
         : '—';
-      setSuccess(`Swapped ${amountSwappedSol.toFixed(6)} SOL. You received ${outAmt} ${selectedToken?.symbol ?? ''}.`);
+      setSuccess(`Swapped ${amountSwappedSol.toFixed(6)} SOL. You received ${outAmt} ${selectedToken?.symbol ?? ''}. Verify: solscan.io/tx/${sig}`);
       onSwapDone?.(amountSwappedSol);
+      try {
+        await connection.confirmTransaction(sig, 'confirmed');
+      } catch {
+        // Tx was sent; confirmation may timeout over HTTP proxy. Do not show error.
+      }
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : 'Swap failed');
     } finally {

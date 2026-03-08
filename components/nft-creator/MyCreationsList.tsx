@@ -107,12 +107,16 @@ export default function MyCreationsList() {
       const sig = await connection.sendRawTransaction(
         Buffer.from((signed as { serialize: () => Uint8Array }).serialize())
       );
-      await connection.confirmTransaction(sig);
       setCollectionStatus((prev) => ({
         ...prev,
         [mint]: { inExpectedCollection: true, expectedCollectionMint: prev[mint]?.expectedCollectionMint ?? null },
       }));
       load();
+      try {
+        await connection.confirmTransaction(sig);
+      } catch {
+        // Tx sent; confirmation may timeout over HTTP proxy.
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Add to collection failed');
     } finally {
@@ -151,7 +155,6 @@ export default function MyCreationsList() {
       const sig = await connection.sendRawTransaction(
         Buffer.from((signed as { serialize: () => Uint8Array }).serialize())
       );
-      await connection.confirmTransaction(sig);
       const confirmRes = await fetch('/api/nft-creator/confirm-finalize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -166,6 +169,11 @@ export default function MyCreationsList() {
         setError('Transaction sent but confirmation failed. Your NFT was minted.');
         load();
         return;
+      }
+      try {
+        await connection.confirmTransaction(sig);
+      } catch {
+        // Tx sent; confirmation may timeout over HTTP proxy.
       }
       // Always add to collection right after mint (second signature). One click on Finalize = 2 signatures, no separate button.
       try {
@@ -188,7 +196,11 @@ export default function MyCreationsList() {
           const addSig = await connection.sendRawTransaction(
             Buffer.from((addSigned as { serialize: () => Uint8Array }).serialize())
           );
-          await connection.confirmTransaction(addSig);
+          try {
+            await connection.confirmTransaction(addSig);
+          } catch {
+            // Tx sent; confirmation may timeout over HTTP proxy.
+          }
         }
       } catch {
         // Add-to-collection failed; user can use "Add to collection" button if it appears.

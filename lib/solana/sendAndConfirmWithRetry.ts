@@ -4,8 +4,11 @@ const DEFAULT_MAX_RETRIES = 3;
 const INITIAL_DELAY_MS = 1000;
 
 /**
- * Sends a signed transaction and confirms it with retries.
- * Improves reliability when RPC is slow or temporarily unavailable.
+ * Sends a signed transaction and returns the signature once the tx is sent.
+ * Confirmation is attempted in the same flow but a timeout (e.g. 30s) does not throw:
+ * when using an HTTP-only RPC proxy, WebSocket-based confirmation often fails while the tx
+ * still lands on-chain. Callers can show success and link to Explorer.
+ * Retries only on sendRawTransaction failure (e.g. network/RPC).
  */
 export async function sendAndConfirmWithRetry(
   connection: Connection,
@@ -20,7 +23,11 @@ export async function sendAndConfirmWithRetry(
       const signature = await connection.sendRawTransaction(
         Buffer.isBuffer(signedSerialized) ? signedSerialized : Buffer.from(signedSerialized)
       );
-      await connection.confirmTransaction(signature, 'confirmed');
+      try {
+        await connection.confirmTransaction(signature, 'confirmed');
+      } catch {
+        // Timeout or WebSocket failure; tx often succeeds on-chain. Do not throw.
+      }
       return signature;
     } catch (err) {
       lastError = err;
