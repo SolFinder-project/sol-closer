@@ -84,13 +84,17 @@ export default function ReclaimToStake({
         skipPreflight: false,
         preflightCommitment: 'confirmed',
       });
-      await connection.confirmTransaction(sig, 'confirmed');
       const sol = (amountLamports / LAMPORTS_PER_SOL).toFixed(6);
-      setSuccess(`Staked ${sol} SOL. You received ${tokenName}.`);
+      setSuccess(`Staked ${sol} SOL. You received ${tokenName}. Verify: solscan.io/tx/${sig}`);
       setWalletAmountSol('');
       if (source === 'reclaimed') setHasStakedReclaimed(true);
       const amountStakedSol = source === 'reclaimed' ? amountLamports / LAMPORTS_PER_SOL : undefined;
       onStakeDone?.(amountStakedSol);
+      try {
+        await connection.confirmTransaction(sig, 'confirmed');
+      } catch {
+        // Tx was sent and user received tokens; confirmation may timeout (e.g. WebSocket). Do not show error.
+      }
     } catch (err) {
       const raw = err instanceof Error ? err.message : 'Stake failed';
       if (/401|Unauthorized|Authentication Required|<!doctype/i.test(raw)) {

@@ -4,8 +4,10 @@
  * Returns serialized unsigned transaction; client signs and sends.
  */
 import { NextResponse } from 'next/server';
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { getConnectionForRequest } from '@/lib/solana/connection';
+
+const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +42,13 @@ export async function POST(request: Request) {
     const result = await marinade.deposit(new BN(amountLamports));
 
     const tx = result.transaction;
+    tx.add(
+      new TransactionInstruction({
+        keys: [],
+        programId: MEMO_PROGRAM_ID,
+        data: Buffer.from(`SolPit: Stake ${(amountLamports / 1e9).toFixed(6)} SOL → mSOL`, 'utf8'),
+      })
+    );
     tx.feePayer = publicKey;
     const { blockhash } = await connection.getLatestBlockhash('confirmed');
     tx.recentBlockhash = blockhash;

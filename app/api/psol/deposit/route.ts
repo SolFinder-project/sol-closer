@@ -3,9 +3,11 @@
  * Server builds the tx and signs with the ephemeral keypair; client signs and sends.
  */
 import { NextResponse } from 'next/server';
-import { PublicKey, Transaction } from '@solana/web3.js';
+import { PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { getConnectionForRequest } from '@/lib/solana/connection';
 import { PSOL_STAKE_POOL_ADDRESS } from '@/lib/solana/psolStake';
+
+const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +46,13 @@ export async function POST(request: Request) {
 
     const tx = new Transaction();
     tx.add(...instructions);
+    tx.add(
+      new TransactionInstruction({
+        keys: [],
+        programId: MEMO_PROGRAM_ID,
+        data: Buffer.from(`SolPit: Stake ${(amountLamports / 1e9).toFixed(6)} SOL → PSOL`, 'utf8'),
+      })
+    );
     tx.feePayer = publicKey;
     const { blockhash } = await connection.getLatestBlockhash('confirmed');
     tx.recentBlockhash = blockhash;

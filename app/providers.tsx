@@ -32,10 +32,10 @@ function getRpcEndpoint(): string {
   return network === 'mainnet-beta' ? PUBLIC_MAINNET : PUBLIC_DEVNET;
 }
 
-/** En dev, supprime le spam des erreurs WebSocket Helius (ws error / Close received after close). */
+/** Suppress WebSocket errors when using HTTP-only RPC proxy (confirmTransaction/subscriptions fail; tx still succeeds). */
 function useSuppressHeliusWsSpam() {
   useEffect(() => {
-    if (typeof window === 'undefined' || process.env.NODE_ENV !== 'development') return;
+    if (typeof window === 'undefined') return;
     const raw = console.error;
     console.error = (...args: unknown[]) => {
       const msg = String(args?.[0] ?? '');
