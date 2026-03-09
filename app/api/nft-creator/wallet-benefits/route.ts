@@ -24,9 +24,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ nfts });
   } catch (e) {
     console.error('[nft-creator/wallet-benefits]', e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'Failed to load Creator NFTs' },
-      { status: 500 }
-    );
+    // Non-blocking: return empty list so UI (F1 banner, reclaim) still works; RPC/DAS failure must not break the page
+    return NextResponse.json({ nfts: [] });
   }
 }

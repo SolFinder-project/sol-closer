@@ -4,8 +4,12 @@ import { updateTopUsers, updateTopReferrers, updateTopPosters } from '@/lib/upda
 export async function GET(request: Request) {
   // Sécurité : vérifie que c'est bien Vercel Cron qui appelle
   const authHeader = request.headers.get('authorization');
+  const secretSet = Boolean(process.env.CRON_SECRET);
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    console.error('❌ Unauthorized cron attempt');
+    console.error(
+      '❌ Unauthorized cron attempt: update-leaderboard',
+      secretSet ? '(header missing or mismatch)' : '(CRON_SECRET not set in env)'
+    );
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   

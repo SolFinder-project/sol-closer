@@ -49,7 +49,11 @@ export const MAX_EMPTY_CLOSE_PER_TX = 12;
 export const MAX_BURN_CLOSE_PER_TX = 5;
 /** Max single-ix reclaim (Pump PDA, PumpSwap PDA) per tx. Size-safe. */
 export const MAX_SINGLE_IX_RECLAIM_PER_TX = 12;
-/** Max cNFT burns per tx (proof size makes tx large; conservative for 1232 bytes). */
-export const MAX_CNFT_BURNS_PER_TX = 8;
+/**
+ * Max cNFT burns per tx. Bubblegum merkle proof can be ~640 bytes per burn (canopy depth 0);
+ * even with truncateCanopy, 2+ burns often exceed Solana's 1232-byte tx limit → "encoding overruns Uint8Array".
+ * Use 1 per tx so serialization never overflows; multiple cNFTs are handled by multiple txs in closeCnftAssets.
+ */
+export const MAX_CNFT_BURNS_PER_TX = 1;
 /** Max Metaplex Core burns per tx (1 account each). */
 export const MAX_CORE_BURN_PER_TX = 12;

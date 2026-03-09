@@ -258,9 +258,9 @@ export async function getUserStats(walletAddress: string) {
     .from('user_stats')
     .select('*')
     .eq('wallet_address', walletAddress)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') {
+  if (error) {
     console.error('Error fetching user stats:', error);
     return null;
   }

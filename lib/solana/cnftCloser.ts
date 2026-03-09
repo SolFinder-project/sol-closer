@@ -1,6 +1,6 @@
 /**
  * Burn compressed NFTs (cNFTs) via Metaplex Bubblegum, then charge fee + referral on reclaimed SOL.
- * Batches multiple burns per transaction (up to MAX_CNFT_BURNS_PER_TX) to stay under 1232-byte tx limit.
+ * Processes assets in chunks of MAX_CNFT_BURNS_PER_TX (1 recommended: proof size often makes multi-burn tx exceed 1232 bytes).
  */
 
 import { PublicKey } from '@solana/web3.js';

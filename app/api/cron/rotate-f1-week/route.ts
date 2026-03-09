@@ -12,8 +12,12 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
+  const secretSet = Boolean(process.env.CRON_SECRET);
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    console.error('❌ Unauthorized cron attempt: rotate-f1-week');
+    console.error(
+      '❌ Unauthorized cron attempt: rotate-f1-week',
+      secretSet ? '(header missing or mismatch)' : '(CRON_SECRET not set in env)'
+    );
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
