@@ -94,9 +94,11 @@ export async function closeCnftAssets(
 
       if (builder == null) continue;
       try {
-        const result = await builder.sendAndConfirm(umi, { confirm: { commitment: 'confirmed' } });
-        if (result.signature) {
-          allSignatures.push(result.signature);
+        // Send only: no confirm wait (same as other closers via sendAndConfirmWithRetry).
+        // UI shows success as soon as tx is sent; avoids long delay and websocket errors.
+        const signature = await builder.send(umi);
+        if (signature) {
+          allSignatures.push(signature);
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
