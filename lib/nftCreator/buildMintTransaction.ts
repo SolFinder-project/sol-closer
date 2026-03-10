@@ -49,6 +49,13 @@ export interface BuildMintTransactionParams {
   feeRecipient: string;
 }
 
+/** Optional: pass connection and blockhash from API route so RPC goes through proxy (avoids 401). */
+export interface BuildMintTransactionOptions {
+  connection?: import('@solana/web3.js').Connection;
+  blockhash?: string;
+  lastValidBlockHeight?: number;
+}
+
 export interface BuildMintTransactionResult {
   serializedTransaction: string;
   mintAddress: string;
@@ -139,10 +146,12 @@ function signTransactionWithKeypairs(
  * when collection is configured); client must sign as payer and send.
  */
 export async function buildMintTransaction(
-  params: BuildMintTransactionParams
+  params: BuildMintTransactionParams,
+  options?: BuildMintTransactionOptions
 ): Promise<BuildMintTransactionResult> {
   const rpcUrl = getRpcUrl();
   const umi = createUmi(rpcUrl).use(mplTokenMetadata());
+  const { connection: optsConnection, blockhash: optsBlockhash } = options ?? {};
 
   const userPubkey = publicKey(params.userWallet);
   const feeRecipientPubkey = publicKey(params.feeRecipient);
@@ -238,7 +247,9 @@ export async function buildMintTransaction(
     builder = transactionBuilder().prepend(noOpTransfer).add(mainBuilder);
   }
 
-  let tx = await builder.buildWithLatestBlockhash(umi);
+  const tx = optsBlockhash
+    ? builder.setBlockhash({ blockhash: optsBlockhash, lastValidBlockHeight: options?.lastValidBlockHeight ?? 0 }).build(umi)
+    : await builder.buildWithLatestBlockhash(umi);
 
   if (useCollection && collectionAuthoritySigner) {
     const requiredSignerKeys = tx.message.accounts
@@ -261,7 +272,7 @@ export async function buildMintTransaction(
 
   if (useCollection && collectionAuthoritySigner) {
     try {
-      const connection = getConnection();
+      const connection = optsConnection ?? getConnection();
       const versionedTx = VersionedTransaction.deserialize(Buffer.from(serialized));
       const sim = await connection.simulateTransaction(versionedTx, { sigVerify: false });
       if (sim.value.err) {
@@ -290,9 +301,16 @@ export async function buildMintTransaction(
  * server owns the collection.
  * Server signs with collection authority; client signs as payer and as NFT update authority.
  */
+/** Optional: pass blockhash from API route so RPC goes through proxy (avoids 401). */
+export interface BuildAddToCollectionOptions {
+  blockhash?: string;
+  lastValidBlockHeight?: number;
+}
+
 export async function buildAddToCollectionTransaction(
   nftMintAddress: string,
-  userWallet: string
+  userWallet: string,
+  options?: BuildAddToCollectionOptions
 ): Promise<{ serializedTransaction: string }> {
   const collectionConfig = await getCollectionConfig();
   if (!collectionConfig) {
@@ -301,6 +319,7 @@ export async function buildAddToCollectionTransaction(
 
   const rpcUrl = getRpcUrl();
   const umi = createUmi(rpcUrl).use(mplTokenMetadata());
+  const { blockhash: optsBlockhash, lastValidBlockHeight } = options ?? {};
   const userPubkey = publicKey(userWallet);
 
   umi.identity = createNoopSigner(userPubkey);
@@ -360,7 +379,9 @@ export async function buildAddToCollectionTransaction(
     })
   );
 
-  const tx = await builder.buildWithLatestBlockhash(umi);
+  const tx = optsBlockhash
+    ? builder.setBlockhash({ blockhash: optsBlockhash, lastValidBlockHeight: lastValidBlockHeight ?? 0 }).build(umi)
+    : await builder.buildWithLatestBlockhash(umi);
   const requiredSignerKeys = tx.message.accounts
     .slice(0, tx.message.header.numRequiredSignatures)
     .map((k) => k.toString());

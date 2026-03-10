@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { getConnectionForRequest } from '@/lib/solana/connection';
 import { buildMintTransaction } from '@/lib/nftCreator/buildMintTransaction';
 import { getEligibility } from '@/lib/nftCreator';
 import { NFT_CREATOR_MIN_RECLAIM_SOL } from '@/types/nftCreator';
@@ -72,12 +73,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing metadata URI' }, { status: 400 });
     }
 
-    const { serializedTransaction, mintAddress, collectionIncludedInMintTx } = await buildMintTransaction({
-      userWallet: wallet,
-      name: String(row.name || 'SolPit Creator').slice(0, 32),
-      metadataUri,
-      feeRecipient,
-    });
+    const connection = getConnectionForRequest(request);
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+
+    const { serializedTransaction, mintAddress, collectionIncludedInMintTx } = await buildMintTransaction(
+      {
+        userWallet: wallet,
+        name: String(row.name || 'SolPit Creator').slice(0, 32),
+        metadataUri,
+        feeRecipient,
+      },
+      { connection, blockhash, lastValidBlockHeight }
+    );
 
     return NextResponse.json({
       transaction: serializedTransaction,

@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getConnectionForRequest } from '@/lib/solana/connection';
 import { buildAddToCollectionTransaction } from '@/lib/nftCreator/buildMintTransaction';
 import { isValidSolanaAddress } from '@/lib/solana/validators';
 
@@ -28,7 +29,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid mint or wallet address.' }, { status: 400 });
     }
 
-    const { serializedTransaction } = await buildAddToCollectionTransaction(mint.trim(), wallet.trim());
+    const connection = getConnectionForRequest(request);
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+    const { serializedTransaction } = await buildAddToCollectionTransaction(mint.trim(), wallet.trim(), {
+      blockhash,
+      lastValidBlockHeight,
+    });
     return NextResponse.json({ transaction: serializedTransaction });
   } catch (error) {
     console.error('[nft-creator/add-to-collection]', error);

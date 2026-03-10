@@ -261,22 +261,9 @@ export default function NftCreatorAdminPage() {
   }
 
   if (!isAdminWallet) {
-    const connectedAddress = publicKey?.toBase58();
     return (
       <div className="min-h-screen bg-dark-bg text-white flex items-center justify-center p-6">
-        <div className="max-w-md text-center space-y-3">
-          <h1 className="text-2xl font-bold font-[family-name:var(--font-orbitron)] text-red-400">Access denied</h1>
-          <p className="text-gray-400 text-sm">
-            This page is restricted to the configured admin wallet(s). Add your address to{' '}
-            <code className="text-gray-500">NEXT_PUBLIC_NFT_CREATOR_ADMIN_WALLETS</code> or{' '}
-            <code className="text-gray-500">NFT_CREATOR_ADMIN_WALLETS</code> (Vercel → Environment Variables), then reload — no redeploy needed.
-          </p>
-          {connectedAddress && (
-            <p className="text-gray-500 text-xs font-mono">
-              Connected: {connectedAddress.slice(0, 4)}…{connectedAddress.slice(-4)} — this address must be in the env var (comma-separated if several).
-            </p>
-          )}
-        </div>
+        <h1 className="text-2xl font-bold font-[family-name:var(--font-orbitron)] text-red-400">Access denied</h1>
       </div>
     );
   }
