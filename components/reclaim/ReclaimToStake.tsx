@@ -90,7 +90,6 @@ export default function ReclaimToStake({
       if (source === 'reclaimed') setHasStakedReclaimed(true);
       const amountStakedSol = source === 'reclaimed' ? amountLamports / LAMPORTS_PER_SOL : undefined;
       onStakeDone?.(amountStakedSol);
-      void connection.confirmTransaction(sig, 'confirmed').catch(() => {});
     } catch (err) {
       const raw = err instanceof Error ? err.message : 'Stake failed';
       if (/401|Unauthorized|Authentication Required|<!doctype/i.test(raw)) {

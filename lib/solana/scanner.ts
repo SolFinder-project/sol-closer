@@ -295,6 +295,7 @@ export async function getReclaimEstimate(walletPublicKey: PublicKey): Promise<Re
   let nftBurnCount = 0;
   let pumpPdaCount = 0;
   let pumpSwapPdaCount = 0;
+  let driftCount = 0;
   let cnftCount = 0;
   let estimatedLamports = 0;
 
@@ -388,6 +389,15 @@ export async function getReclaimEstimate(walletPublicKey: PublicKey): Promise<Re
     }
 
     try {
+      const { scanDriftUserAccounts } = await import('./drift');
+      const driftAccounts = await scanDriftUserAccounts(walletPublicKey);
+      driftCount = driftAccounts.length;
+      for (const a of driftAccounts) estimatedLamports += a.lamports;
+    } catch {
+      // Drift not critical for estimate
+    }
+
+    try {
       const cnftList = await getCompressedNftsByOwner(walletPublicKey);
       cnftCount = cnftList.length;
       // cNFTs recover 0 SOL (rent in shared tree)
@@ -401,13 +411,14 @@ export async function getReclaimEstimate(walletPublicKey: PublicKey): Promise<Re
       nftBurnCount,
       pumpPdaCount,
       pumpSwapPdaCount,
+      driftCount,
       cnftCount,
       estimatedLamports,
       estimatedSol: estimatedLamports / 1e9,
     };
   } catch (error) {
     logger.error('getReclaimEstimate error:', error);
-    return { emptyCount: 0, dustCount: 0, nftBurnCount: 0, pumpPdaCount: 0, pumpSwapPdaCount: 0, cnftCount: 0, estimatedLamports: 0, estimatedSol: 0 };
+    return { emptyCount: 0, dustCount: 0, nftBurnCount: 0, pumpPdaCount: 0, pumpSwapPdaCount: 0, driftCount: 0, cnftCount: 0, estimatedLamports: 0, estimatedSol: 0 };
   }
 }
 

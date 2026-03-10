@@ -12,6 +12,8 @@ export interface ReclaimEstimate {
   pumpPdaCount: number;
   /** 0 or 1 (PumpSwap user_volume_accumulator per wallet). */
   pumpSwapPdaCount: number;
+  /** Drift user account(s), ~0.035 SOL rent each. */
+  driftCount: number;
   /** Compressed NFTs (burn = wallet cleanup, 0 SOL recovered). */
   cnftCount: number;
   estimatedLamports: number;

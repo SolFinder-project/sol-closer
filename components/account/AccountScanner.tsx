@@ -659,13 +659,13 @@ export default function AccountScanner({ onNavigateToGame, onReclaimSuccess }: A
         <div className="card-cyber border-neon-cyan/30 bg-neon-cyan/5 p-4 md:p-5">
           {estimateLoading ? (
             <p className="text-sm text-gray-400">Checking reclaim potential...</p>
-          ) : estimate && (estimate.emptyCount + estimate.dustCount + (estimate.nftBurnCount ?? 0) + (estimate.pumpPdaCount ?? 0) + (estimate.pumpSwapPdaCount ?? 0) + (estimate.cnftCount ?? 0)) > 0 ? (
+          ) : estimate && (estimate.emptyCount + estimate.dustCount + (estimate.nftBurnCount ?? 0) + (estimate.pumpPdaCount ?? 0) + (estimate.pumpSwapPdaCount ?? 0) + (estimate.driftCount ?? 0) + (estimate.cnftCount ?? 0)) > 0 ? (
             <p className="text-sm">
               <span className="text-neon-cyan font-semibold">~{(estimate.estimatedSol * (100 - effectiveFeePercent - (referrerWallet ? effectiveReferralPercent : 0)) / 100).toFixed(4)} SOL</span>
-              <span className="text-gray-400"> to receive after {referrerWallet ? `${effectiveFeePercent}% fee + ${effectiveReferralPercent}% referral` : `${effectiveFeePercent}% fee`} ({estimate.emptyCount} empty + {estimate.dustCount} dust + {estimate.nftBurnCount ?? 0} NFT{(estimate.pumpPdaCount ?? 0) ? ` + ${estimate.pumpPdaCount} Pump` : ''}{(estimate.pumpSwapPdaCount ?? 0) ? ` + ${estimate.pumpSwapPdaCount} PumpSwap` : ''}{(estimate.cnftCount ?? 0) ? ` + ${estimate.cnftCount} cNFT` : ''}, ~{estimate.estimatedSol.toFixed(4)} SOL gross{(estimate.cnftCount ?? 0) > 0 ? ' + cNFT wallet cleanup' : ''}). Run a scan to confirm and close.</span>
+              <span className="text-gray-400"> to receive after {referrerWallet ? `${effectiveFeePercent}% fee + ${effectiveReferralPercent}% referral` : `${effectiveFeePercent}% fee`} ({estimate.emptyCount} empty + {estimate.dustCount} dust + {estimate.nftBurnCount ?? 0} NFT{(estimate.pumpPdaCount ?? 0) ? ` + ${estimate.pumpPdaCount} Pump` : ''}{(estimate.pumpSwapPdaCount ?? 0) ? ` + ${estimate.pumpSwapPdaCount} PumpSwap` : ''}{(estimate.driftCount ?? 0) ? ` + ${estimate.driftCount} Drift` : ''}{(estimate.cnftCount ?? 0) ? ` + ${estimate.cnftCount} cNFT` : ''}, ~{estimate.estimatedSol.toFixed(4)} SOL gross{(estimate.cnftCount ?? 0) > 0 ? ' + cNFT wallet cleanup' : ''}). Run a scan to confirm and close.</span>
             </p>
-          ) : estimate && estimate.emptyCount === 0 && estimate.dustCount === 0 && (estimate.nftBurnCount ?? 0) === 0 && (estimate.pumpPdaCount ?? 0) === 0 && (estimate.pumpSwapPdaCount ?? 0) === 0 && (estimate.cnftCount ?? 0) === 0 ? (
-            <p className="text-sm text-gray-400">Your wallet looks clean – no empty, dust, NFT, Pump PDA, PumpSwap or cNFT accounts detected. Run a scan to double-check.</p>
+          ) : estimate && estimate.emptyCount === 0 && estimate.dustCount === 0 && (estimate.nftBurnCount ?? 0) === 0 && (estimate.pumpPdaCount ?? 0) === 0 && (estimate.pumpSwapPdaCount ?? 0) === 0 && (estimate.driftCount ?? 0) === 0 && (estimate.cnftCount ?? 0) === 0 ? (
+            <p className="text-sm text-gray-400">Your wallet looks clean – no empty, dust, NFT, Pump PDA, PumpSwap, Drift or cNFT accounts detected. Run a scan to double-check.</p>
           ) : null}
         </div>
       )}

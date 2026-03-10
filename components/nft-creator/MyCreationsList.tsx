@@ -112,7 +112,6 @@ export default function MyCreationsList() {
         [mint]: { inExpectedCollection: true, expectedCollectionMint: prev[mint]?.expectedCollectionMint ?? null },
       }));
       load();
-      void connection.confirmTransaction(sig).catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Add to collection failed');
     } finally {
@@ -166,7 +165,6 @@ export default function MyCreationsList() {
         load();
         return;
       }
-      void connection.confirmTransaction(sig).catch(() => {});
       // Always add to collection right after mint (second signature). One click on Finalize = 2 signatures, no separate button.
       try {
         const addRes = await fetch('/api/nft-creator/add-to-collection', {
@@ -185,10 +183,9 @@ export default function MyCreationsList() {
             const addTx = Transaction.from(addTxBytes);
             addSigned = await signTransaction(addTx as unknown as VersionedTransaction);
           }
-          const addSig = await connection.sendRawTransaction(
+          await connection.sendRawTransaction(
             Buffer.from((addSigned as { serialize: () => Uint8Array }).serialize())
           );
-          void connection.confirmTransaction(addSig).catch(() => {});
         }
       } catch {
         // Add-to-collection failed; user can use "Add to collection" button if it appears.

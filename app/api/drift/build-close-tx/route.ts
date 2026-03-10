@@ -9,7 +9,7 @@ import {
   SystemProgram,
   ComputeBudgetProgram,
 } from '@solana/web3.js';
-import { getConnection } from '@/lib/solana/connection';
+import { getConnectionForRequest } from '@/lib/solana/connection';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +47,8 @@ export async function POST(request: Request) {
 
     const authority = new PublicKey(authorityStr);
     const feeRecipient = new PublicKey(feeRecipientStr);
-    const connection = getConnection();
+    // Use proxy (same as client) so RPC goes through /api/rpc with client Origin; avoids 401 when Helius rejects direct server calls.
+    const connection = getConnectionForRequest(request);
 
     const { DriftClient } = await import('@drift-labs/sdk');
 

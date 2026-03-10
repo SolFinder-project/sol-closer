@@ -35,10 +35,14 @@ function getRpcEndpoint(): string {
 function isWsNoise(msg: string): boolean {
   return (
     msg.includes('ws error') ||
-    msg.includes('WebSocket connection') && msg.includes('failed') ||
+    (msg.includes('WebSocket connection') && msg.includes('failed')) ||
     (msg.includes('WebSocket') && msg.includes('failed')) ||
     msg.includes('Close received after close') ||
-    (msg.includes('wss://') && msg.includes('failed'))
+    (msg.includes('wss://') && msg.includes('failed')) ||
+    msg.includes('WebSocket is closed') ||
+    (msg.includes('WebSocket') && msg.includes('closed')) ||
+    (msg.includes('WebSocket') && msg.includes('disconnected')) ||
+    msg.includes('WebSocket connection to') && (msg.includes('failed') || msg.includes('closed'))
   );
 }
 
