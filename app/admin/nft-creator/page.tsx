@@ -46,12 +46,6 @@ type ApprovedPendingItem = {
   created_at: string;
 };
 
-function getAdminWallets(): string[] {
-  if (typeof window === 'undefined') return [];
-  const raw = process.env.NEXT_PUBLIC_NFT_CREATOR_ADMIN_WALLETS ?? '';
-  return raw.split(',').map((w) => w.trim().toLowerCase()).filter(Boolean);
-}
-
 function useAdminSecret() {
   const [secret, setSecretState] = useState<string | null>(null);
   useEffect(() => {
@@ -90,9 +84,29 @@ export default function NftCreatorAdminPage() {
   const [loadingCirculation, setLoadingCirculation] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState<Record<string, string>>({});
+  const [accessAllowed, setAccessAllowed] = useState<boolean | null>(null);
 
-  const adminWallets = getAdminWallets();
-  const isAdminWallet = adminWallets.length === 0 || (publicKey && adminWallets.includes(publicKey.toString().toLowerCase()));
+  useEffect(() => {
+    if (!publicKey) {
+      setAccessAllowed(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/nft-creator/admin/check-access?wallet=${encodeURIComponent(publicKey.toBase58())}`)
+      .then((r) => r.json())
+      .then((data: { allowed?: boolean }) => {
+        if (!cancelled) setAccessAllowed(data.allowed === true);
+      })
+      .catch(() => {
+        if (!cancelled) setAccessAllowed(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [publicKey?.toBase58()]);
+
+  const isAdminWallet = accessAllowed === true;
+  const accessCheckLoading = publicKey != null && accessAllowed === null;
 
   const headers = (): HeadersInit => ({
     'Content-Type': 'application/json',
@@ -225,26 +239,43 @@ export default function NftCreatorAdminPage() {
     }
   };
 
-  if (!isAdminWallet) {
+  if (accessCheckLoading) {
     return (
       <div className="min-h-screen bg-dark-bg text-white flex items-center justify-center p-6">
-        <div className="max-w-md text-center">
-          <h1 className="text-2xl font-bold font-[family-name:var(--font-orbitron)] text-red-400 mb-2">Access denied</h1>
-          <p className="text-gray-400 text-sm">
-            This page is restricted to the configured admin wallet(s). Connect the correct wallet or add your address to{' '}
-            <code className="text-gray-500">NEXT_PUBLIC_NFT_CREATOR_ADMIN_WALLETS</code>.
-          </p>
+        <div className="text-center">
+          <p className="text-gray-400">Checking access…</p>
         </div>
       </div>
     );
   }
 
-  if (adminWallets.length > 0 && (!connected || !publicKey)) {
+  if (!connected || !publicKey) {
     return (
       <div className="min-h-screen bg-dark-bg text-white flex items-center justify-center p-6">
         <div className="max-w-md text-center">
           <h1 className="text-2xl font-bold font-[family-name:var(--font-orbitron)] text-white mb-2">NFT Creator Admin</h1>
           <p className="text-gray-400 text-sm">Connect your wallet to access the admin panel.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdminWallet) {
+    const connectedAddress = publicKey?.toBase58();
+    return (
+      <div className="min-h-screen bg-dark-bg text-white flex items-center justify-center p-6">
+        <div className="max-w-md text-center space-y-3">
+          <h1 className="text-2xl font-bold font-[family-name:var(--font-orbitron)] text-red-400">Access denied</h1>
+          <p className="text-gray-400 text-sm">
+            This page is restricted to the configured admin wallet(s). Add your address to{' '}
+            <code className="text-gray-500">NEXT_PUBLIC_NFT_CREATOR_ADMIN_WALLETS</code> or{' '}
+            <code className="text-gray-500">NFT_CREATOR_ADMIN_WALLETS</code> (Vercel → Environment Variables), then reload — no redeploy needed.
+          </p>
+          {connectedAddress && (
+            <p className="text-gray-500 text-xs font-mono">
+              Connected: {connectedAddress.slice(0, 4)}…{connectedAddress.slice(-4)} — this address must be in the env var (comma-separated if several).
+            </p>
+          )}
         </div>
       </div>
     );
