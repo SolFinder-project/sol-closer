@@ -166,6 +166,7 @@ export default function MyCreationsList() {
         return;
       }
       // Always add to collection right after mint (second signature). One click on Finalize = 2 signatures, no separate button.
+      let collectionDone = false;
       try {
         const addRes = await fetch('/api/nft-creator/add-to-collection', {
           method: 'POST',
@@ -186,16 +187,18 @@ export default function MyCreationsList() {
           await connection.sendRawTransaction(
             Buffer.from((addSigned as { serialize: () => Uint8Array }).serialize())
           );
+          collectionDone = true;
+        } else if (addRes.ok && addData.collectionSkipped) {
+          setError(addData.reason ?? 'NFT minted. Collection verification skipped (collection not set up). Your tier benefits still apply.');
         } else if (!addRes.ok) {
           setError(addData?.error ?? 'Second step (add to collection) failed. Use "Add to collection" on the NFT card to retry.');
         }
       } catch (addErr) {
         setError(addErr instanceof Error ? addErr.message : 'Add to collection failed. Use the button on the NFT card to retry.');
       }
-      // Optimistic: consider NFT in collection so "Add to collection" button does not flash.
       setCollectionStatus((prev) => ({
         ...prev,
-        [mintAddress]: { expectedCollectionMint: prev[mintAddress]?.expectedCollectionMint ?? null, inExpectedCollection: true },
+        [mintAddress]: { expectedCollectionMint: prev[mintAddress]?.expectedCollectionMint ?? null, inExpectedCollection: collectionDone },
       }));
       load();
     } catch (err) {

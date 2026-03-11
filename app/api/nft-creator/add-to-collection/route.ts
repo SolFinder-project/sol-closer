@@ -31,12 +31,25 @@ export async function POST(request: NextRequest) {
 
     const connection = getConnectionForRequest(request);
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-    const { serializedTransaction } = await buildAddToCollectionTransaction(mint.trim(), wallet.trim(), {
-      connection,
-      blockhash,
-      lastValidBlockHeight,
-    });
-    return NextResponse.json({ transaction: serializedTransaction });
+    try {
+      const { serializedTransaction } = await buildAddToCollectionTransaction(mint.trim(), wallet.trim(), {
+        connection,
+        blockhash,
+        lastValidBlockHeight,
+      });
+      return NextResponse.json({ transaction: serializedTransaction });
+    } catch (buildErr) {
+      const msg = buildErr instanceof Error ? buildErr.message : 'Failed to build add-to-collection transaction';
+      // Collection invalid or misconfigured (e.g. no metadata on-chain, authority mismatch) → do not 500; let frontend show NFT and message.
+      if (
+        typeof msg === 'string' &&
+        (msg.includes('Collection NFT has no metadata') || msg.includes('Collection update authority mismatch'))
+      ) {
+        console.warn('[nft-creator/add-to-collection] collection not usable:', msg);
+        return NextResponse.json({ transaction: null, collectionSkipped: true, reason: msg });
+      }
+      throw buildErr;
+    }
   } catch (error) {
     console.error('[nft-creator/add-to-collection]', error);
     return NextResponse.json(

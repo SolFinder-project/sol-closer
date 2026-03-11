@@ -16,7 +16,7 @@
  * and would otherwise throw "The provided signer is not required to sign this transaction."
  */
 
-import { Keypair, VersionedTransaction } from '@solana/web3.js';
+import { Keypair, PublicKey, VersionedTransaction } from '@solana/web3.js';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { getConnection } from '@/lib/solana/connection';
 import { createNoopSigner, createSignerFromKeypair, generateSigner, percentAmount, transactionBuilder } from '@metaplex-foundation/umi';
@@ -340,6 +340,21 @@ export async function buildAddToCollectionTransaction(
   const collectionMetadataPda = findMetadataPda(umi, { mint: collectionMintPubkey });
   const collectionMasterEditionPda = findMasterEditionPda(umi, { mint: collectionMintPubkey });
 
+  // Validate collection on-chain to avoid Verify Collection 0x39 (Incorrect account owner).
+  const collectionMetadata = await safeFetchMetadataFromSeeds(umi, { mint: collectionMintPubkey });
+  if (!collectionMetadata) {
+    throw new Error(
+      'Collection NFT has no metadata on-chain. Set NFT_CREATOR_COLLECTION_MINT to a mint created with Metaplex Token Metadata (metadata + master edition). Create the collection first, then set the env var.'
+    );
+  }
+  const collectionAuthorityPubkeyStr = collectionAuthoritySigner.publicKey.toString();
+  const collectionUpdateAuthorityStr = collectionMetadata.updateAuthority?.toString?.() ?? '';
+  if (collectionUpdateAuthorityStr && collectionAuthorityPubkeyStr !== collectionUpdateAuthorityStr) {
+    throw new Error(
+      `Collection update authority mismatch: env NFT_CREATOR_COLLECTION_AUTHORITY must be the update authority of the collection mint. Expected ${collectionUpdateAuthorityStr}, got ${collectionAuthorityPubkeyStr}.`
+    );
+  }
+
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   const delaysMs = [0, 1500, 3500, 6000];
   let nftMetadata: Awaited<ReturnType<typeof safeFetchMetadataFromSeeds>> = null;
@@ -400,5 +415,73 @@ export async function buildAddToCollectionTransaction(
   const serialized = umi.transactions.serialize(signedTx);
   return {
     serializedTransaction: Buffer.from(serialized).toString('base64'),
+  };
+}
+
+/** Result of validating the configured NFT Creator collection (for GET /api/nft-creator/check-collection). */
+export type ValidateCollectionConfigResult =
+  | { ok: true; mint: string; updateAuthority: string }
+  | { ok: false; reason: string };
+
+/**
+ * Validates that the collection in env (NFT_CREATOR_COLLECTION_MINT + AUTHORITY) exists on-chain
+ * with metadata, master edition, and matching update authority. Use to verify config before Finalize.
+ */
+export async function validateCollectionConfig(): Promise<ValidateCollectionConfigResult> {
+  const collectionConfig = await getCollectionConfig();
+  if (!collectionConfig) {
+    return {
+      ok: false,
+      reason: 'Collection not configured (set NFT_CREATOR_COLLECTION_MINT and NFT_CREATOR_COLLECTION_AUTHORITY).',
+    };
+  }
+
+  const umi = createUmi(getRpcUrl()).use(mplTokenMetadata());
+  const collectionMintPubkey = publicKey(collectionConfig.mint);
+  const solanaKp = Keypair.fromSecretKey(Uint8Array.from(collectionConfig.authoritySecretKey));
+  const collectionAuthoritySigner = createSignerFromKeypair(umi, {
+    publicKey: publicKey(solanaKp.publicKey.toBase58()),
+    secretKey: solanaKp.secretKey,
+  });
+
+  const collectionMetadata = await safeFetchMetadataFromSeeds(umi, { mint: collectionMintPubkey });
+  if (!collectionMetadata) {
+    return {
+      ok: false,
+      reason:
+        'Collection NFT has no metadata on-chain. Create the collection with scripts/create-nft-creator-collection.mjs or a Metaplex-compatible tool.',
+    };
+  }
+
+  const expectedAuthority = collectionAuthoritySigner.publicKey.toString();
+  const onChainAuthority = collectionMetadata.updateAuthority?.toString?.() ?? '';
+  if (onChainAuthority && expectedAuthority !== onChainAuthority) {
+    return {
+      ok: false,
+      reason: `Collection update authority mismatch: env has ${expectedAuthority}, on-chain has ${onChainAuthority}.`,
+    };
+  }
+
+  const mePda = findMasterEditionPda(umi, { mint: collectionMintPubkey });
+  const meAddress =
+    (mePda as { bytes?: Uint8Array }).bytes ??
+    (typeof (mePda as { toString?: () => string }).toString === 'function'
+      ? (mePda as { toString: () => string }).toString()
+      : String(mePda));
+  const mePubkey = meAddress instanceof Uint8Array ? new PublicKey(meAddress) : new PublicKey(meAddress);
+  const connection = getConnection();
+  const meInfo = await connection.getAccountInfo(mePubkey);
+  if (!meInfo?.data?.length) {
+    return {
+      ok: false,
+      reason:
+        'Collection has no Master Edition on-chain. The collection NFT must be created with Metaplex Token Metadata (metadata + master edition).',
+    };
+  }
+
+  return {
+    ok: true,
+    mint: collectionConfig.mint,
+    updateAuthority: expectedAuthority,
   };
 }
