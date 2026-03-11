@@ -7,6 +7,18 @@ import type { NftCreatorSubmissionStatus } from '@/types/nftCreator';
 
 export const dynamic = 'force-dynamic';
 
+/** Build proxy RPC options from request so DAS/RPC work when route runs on server (avoids 401). */
+function dasOptionsFromRequest(request: NextRequest): { rpcUrl: string; fetch: (url: string, init?: RequestInit) => Promise<Response> } | undefined {
+  const origin = request.headers.get('origin')?.trim();
+  const referer = request.headers.get('referer')?.trim();
+  const baseUrl = origin || (referer ? (() => { try { return new URL(referer).origin; } catch { return ''; } })() : '');
+  if (!baseUrl) return undefined;
+  const rpcUrl = `${baseUrl.replace(/\/$/, '')}/api/rpc`;
+  const customFetch: (url: string, init?: RequestInit) => Promise<Response> = (url, init) =>
+    fetch(url, { ...init, headers: { ...(init?.headers as Record<string, string>), ...(origin && { Origin: origin }), ...(referer && { Referer: referer }) } });
+  return { rpcUrl, fetch: customFetch };
+}
+
 /**
  * GET /api/nft-creator/submissions?wallet=<address>
  * Returns submissions for the given wallet (creator) plus Creator NFTs they hold but did not create (e.g. received by transfer).
@@ -17,6 +29,8 @@ export async function GET(request: NextRequest) {
   if (!wallet || typeof wallet !== 'string' || wallet.length < 32) {
     return NextResponse.json({ error: 'Missing or invalid wallet' }, { status: 400 });
   }
+
+  const dasOpts = dasOptionsFromRequest(request);
 
   try {
     const { data, error } = await supabase
@@ -38,7 +52,7 @@ export async function GET(request: NextRequest) {
     let heldMints = new Set<string>();
     if (hasFinalizedWithMint) {
       try {
-        const nfts = await getClassicNftMintsByOwner(new PublicKey(wallet));
+        const nfts = await getClassicNftMintsByOwner(new PublicKey(wallet), dasOpts);
         heldMints = new Set(nfts.map((n) => n.mint).filter(Boolean));
       } catch (dasErr) {
         console.warn('[nft-creator/submissions] DAS check failed, inWallet may be wrong:', dasErr);
@@ -99,7 +113,7 @@ export async function GET(request: NextRequest) {
     }> = [];
 
     try {
-      const creatorNfts = await getCreatorNftsForWallet(wallet);
+      const creatorNfts = await getCreatorNftsForWallet(wallet, dasOpts);
       const heldOnlyMints = creatorNfts
         .filter((n) => !submissionMintSet.has(n.mint))
         .map((n) => n.mint);

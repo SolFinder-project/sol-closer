@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
     const connection = getConnectionForRequest(request);
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
     const { serializedTransaction } = await buildAddToCollectionTransaction(mint.trim(), wallet.trim(), {
+      connection,
       blockhash,
       lastValidBlockHeight,
     });

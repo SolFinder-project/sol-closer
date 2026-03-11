@@ -45,7 +45,7 @@ export default function MyCreationsList() {
       const data = await res.json().catch(() => ({}));
       setSubmissions(data?.submissions ?? []);
     } catch {
-      setSubmissions([]);
+      // Keep previous submissions on network error so finalized NFT still shows
     } finally {
       setLoading(false);
     }
@@ -186,9 +186,11 @@ export default function MyCreationsList() {
           await connection.sendRawTransaction(
             Buffer.from((addSigned as { serialize: () => Uint8Array }).serialize())
           );
+        } else if (!addRes.ok) {
+          setError(addData?.error ?? 'Second step (add to collection) failed. Use "Add to collection" on the NFT card to retry.');
         }
-      } catch {
-        // Add-to-collection failed; user can use "Add to collection" button if it appears.
+      } catch (addErr) {
+        setError(addErr instanceof Error ? addErr.message : 'Add to collection failed. Use the button on the NFT card to retry.');
       }
       // Optimistic: consider NFT in collection so "Add to collection" button does not flash.
       setCollectionStatus((prev) => ({

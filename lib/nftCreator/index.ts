@@ -164,11 +164,17 @@ export async function hasCreatorNft(walletAddress: string): Promise<boolean> {
   return tier != null;
 }
 
+/** Options for RPC/DAS when calling from server (proxy + headers to avoid 401). */
+export type CreatorNftsRpcOptions = { rpcUrl?: string; fetch?: import('@/lib/solana/das').DasFetch };
+
 /** Creator NFTs held by wallet with name and tier (for F1/reclaim benefits UI). */
-export async function getCreatorNftsForWallet(walletAddress: string): Promise<{ mint: string; name: string; tier: NftCreatorTier }[]> {
+export async function getCreatorNftsForWallet(
+  walletAddress: string,
+  rpcOptions?: CreatorNftsRpcOptions
+): Promise<{ mint: string; name: string; tier: NftCreatorTier }[]> {
   const [tiersMap, walletMints] = await Promise.all([
     getCreatorTiersMap(),
-    getClassicNftMintsByOwner(new PublicKey(walletAddress)),
+    getClassicNftMintsByOwner(new PublicKey(walletAddress), rpcOptions),
   ]);
   const walletMintSet = new Set(walletMints.map((m) => m.mint).filter(Boolean));
   const creatorMints = [...tiersMap.entries()].filter(([mint]) => walletMintSet.has(mint));

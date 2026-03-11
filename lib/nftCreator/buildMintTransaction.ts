@@ -301,8 +301,9 @@ export async function buildMintTransaction(
  * server owns the collection.
  * Server signs with collection authority; client signs as payer and as NFT update authority.
  */
-/** Optional: pass blockhash from API route so RPC goes through proxy (avoids 401). */
+/** Optional: pass connection (and blockhash) from API route so RPC goes through proxy (avoids 401). */
 export interface BuildAddToCollectionOptions {
+  connection?: import('@solana/web3.js').Connection;
   blockhash?: string;
   lastValidBlockHeight?: number;
 }
@@ -317,9 +318,11 @@ export async function buildAddToCollectionTransaction(
     throw new Error('Collection not configured (NFT_CREATOR_COLLECTION_MINT and NFT_CREATOR_COLLECTION_AUTHORITY).');
   }
 
-  const rpcUrl = getRpcUrl();
-  const umi = createUmi(rpcUrl).use(mplTokenMetadata());
-  const { blockhash: optsBlockhash, lastValidBlockHeight } = options ?? {};
+  const { connection: optsConnection, blockhash: optsBlockhash, lastValidBlockHeight } = options ?? {};
+  const umi = (optsConnection
+    ? createUmi(optsConnection)
+    : createUmi(getRpcUrl())
+  ).use(mplTokenMetadata());
   const userPubkey = publicKey(userWallet);
 
   umi.identity = createNoopSigner(userPubkey);

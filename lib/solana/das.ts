@@ -31,9 +31,17 @@ export interface ClassicNftFromDas {
   tokenAccount?: string;
 }
 
+/** Optional: custom fetch (e.g. with Origin/Referer for proxy). Used when calling from server. */
+export type DasFetch = (url: string, init?: RequestInit) => Promise<Response>;
+
 /** Call DAS getAsset(id) and return result.id (full mint) and optional token account. Exported for scanner fallback when getTokenAccountsByOwner fails. */
-export async function getAssetMintAndTokenAccount(rpcUrl: string, assetId: string): Promise<{ mint: string; tokenAccount?: string } | null> {
-  const res = await fetch(rpcUrl, {
+export async function getAssetMintAndTokenAccount(
+  rpcUrl: string,
+  assetId: string,
+  customFetch?: DasFetch
+): Promise<{ mint: string; tokenAccount?: string } | null> {
+  const doFetch = customFetch ?? fetch;
+  const res = await doFetch(rpcUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -129,9 +137,14 @@ export async function getCompressedNftsByOwner(owner: PublicKey): Promise<DasAss
  * Same approach as tools like Sol Incinerator: use DAS as source of truth, then resolve token accounts.
  * Returns mints (and token account when provided by RPC) for items where compression.compressed !== true.
  * Paginates up to 1000 per page.
+ * Optional options.rpcUrl and options.fetch: use proxy + headers when calling from server (avoids 401).
  */
-export async function getClassicNftMintsByOwner(owner: PublicKey): Promise<ClassicNftFromDas[]> {
-  const rpcUrl = getRpcUrl();
+export async function getClassicNftMintsByOwner(
+  owner: PublicKey,
+  options?: { rpcUrl?: string; fetch?: DasFetch }
+): Promise<ClassicNftFromDas[]> {
+  const rpcUrl = options?.rpcUrl ?? getRpcUrl();
+  const doFetch = options?.fetch ?? fetch;
   const out: ClassicNftFromDas[] = [];
   let page = 1;
   const limit = 1000;
@@ -150,7 +163,7 @@ export async function getClassicNftMintsByOwner(owner: PublicKey): Promise<Class
       },
     };
 
-    const res = await fetch(rpcUrl, {
+    const res = await doFetch(rpcUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -199,7 +212,7 @@ export async function getClassicNftMintsByOwner(owner: PublicKey): Promise<Class
         (typeof it.mint === 'string' && it.mint.trim()) || (typeof it.id === 'string' && it.id.trim()) || null;
       if (mint && !isValidSolanaAddress(mint)) {
         // Short id: try getAsset for full mint; otherwise if we have token account, add it and scanner will derive mint from chain
-        const resolved = await getAssetMintAndTokenAccount(rpcUrl, it.id!);
+        const resolved = await getAssetMintAndTokenAccount(rpcUrl, it.id!, doFetch);
         if (resolved?.mint) {
           out.push({
             mint: resolved.mint,
@@ -218,7 +231,7 @@ export async function getClassicNftMintsByOwner(owner: PublicKey): Promise<Class
       let tokenAccount = tokenAccountFromItem;
       let finalMint = mint;
       if (!tokenAccount && it.id) {
-        const resolved = await getAssetMintAndTokenAccount(rpcUrl, it.id);
+        const resolved = await getAssetMintAndTokenAccount(rpcUrl, it.id, doFetch);
         if (resolved?.tokenAccount) tokenAccount = resolved.tokenAccount;
         if (resolved?.mint) finalMint = resolved.mint;
       }
