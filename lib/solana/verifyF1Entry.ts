@@ -17,9 +17,13 @@ interface ParsedTransferInfo {
   lamports?: number;
 }
 
+const CONFIRM_RETRIES = 8;
+const CONFIRM_RETRY_MS = 1500;
+
 /**
  * Verifies that the transaction is a system transfer of exactly expectedLamports
  * from expectedSourceWallet to treasuryPubkey. Uses getParsedTransaction.
+ * Retries when tx not yet confirmed (client often calls API right after sendTransaction).
  * @param expectedSourceWallet - Base58 wallet address that must be the transfer source (payer).
  */
 export async function verifyF1EntryTx(
@@ -36,10 +40,17 @@ export async function verifyF1EntryTx(
     return { ok: false, error: 'Invalid expected source wallet' };
   }
   try {
-    const parsed = await conn.getParsedTransaction(signature, {
-      maxSupportedTransactionVersion: 0,
-      commitment: 'confirmed',
-    });
+    let parsed: Awaited<ReturnType<Connection['getParsedTransaction']>> = null;
+    for (let i = 0; i < CONFIRM_RETRIES; i++) {
+      parsed = await conn.getParsedTransaction(signature, {
+        maxSupportedTransactionVersion: 0,
+        commitment: 'confirmed',
+      });
+      if (parsed?.meta) break;
+      if (i < CONFIRM_RETRIES - 1) {
+        await new Promise((r) => setTimeout(r, CONFIRM_RETRY_MS));
+      }
+    }
     if (!parsed || !parsed.meta) {
       return { ok: false, error: 'Transaction not found or not confirmed' };
     }
