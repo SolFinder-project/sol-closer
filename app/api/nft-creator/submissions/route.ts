@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { supabase } from '@/lib/supabase/client';
+import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { getClassicNftMintsByOwner } from '@/lib/solana/das';
 import { getCreatorNftsForWallet } from '@/lib/nftCreator';
 import type { NftCreatorSubmissionStatus } from '@/types/nftCreator';
 
 export const dynamic = 'force-dynamic';
+
+const VALID_TIERS = ['standard', 'silver', 'gold', 'platinum'];
 
 /** Build proxy RPC options from request so DAS/RPC work when route runs on server (avoids 401). */
 function dasOptionsFromRequest(request: NextRequest): { rpcUrl: string; fetch: (url: string, init?: RequestInit) => Promise<Response> } | undefined {
@@ -45,25 +48,46 @@ export async function GET(request: NextRequest) {
     }
 
     const rows = (data ?? []) as Record<string, unknown>[];
+
+    // Ensure every finalized submission with mint+tier exists in nft_creator_tiers (so benefits and heldOnly work for old NFTs).
+    const admin = getSupabaseAdmin();
+    if (admin) {
+      for (const r of rows) {
+        if (
+          r.status === 'finalized' &&
+          typeof r.mint_address === 'string' &&
+          r.mint_address.trim() &&
+          typeof r.tier === 'string' &&
+          VALID_TIERS.includes(r.tier as string)
+        ) {
+          await admin.from('nft_creator_tiers').upsert(
+            { mint_address: (r.mint_address as string).trim(), tier: r.tier, created_at: new Date().toISOString() },
+            { onConflict: 'mint_address' }
+          );
+        }
+      }
+    }
+
     const hasFinalizedWithMint = rows.some(
       (r) => r.status === 'finalized' && typeof r.mint_address === 'string' && r.mint_address.trim()
     );
 
-    let heldMints = new Set<string>();
+    let heldMints: Set<string> | null = null;
     if (hasFinalizedWithMint) {
       try {
         const nfts = await getClassicNftMintsByOwner(new PublicKey(wallet), dasOpts);
         heldMints = new Set(nfts.map((n) => n.mint).filter(Boolean));
       } catch (dasErr) {
-        console.warn('[nft-creator/submissions] DAS check failed, inWallet may be wrong:', dasErr);
+        console.warn('[nft-creator/submissions] DAS check failed, finalized NFTs hidden:', dasErr);
       }
     }
 
     const list = rows.map((row) => {
       const status = row.status as NftCreatorSubmissionStatus;
       const mintAddress = typeof row.mint_address === 'string' ? row.mint_address.trim() : null;
+      // Only treat finalized as "in wallet" when DAS succeeded and the mint is in heldMints. When DAS failed (heldMints null), hide finalized.
       const inWallet =
-        status !== 'finalized' || !mintAddress ? true : heldMints.has(mintAddress);
+        status !== 'finalized' || !mintAddress ? true : heldMints !== null && heldMints.has(mintAddress);
 
       return {
         id: row.id,

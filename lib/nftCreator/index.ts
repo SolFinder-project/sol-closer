@@ -165,8 +165,11 @@ export async function getBestCreatorTierForWallet(
 export type CreatorNftsRpcOptions = { rpcUrl?: string; fetch?: import('@/lib/solana/das').DasFetch };
 
 /** Whether wallet holds at least one NFT from SolPit Creator collection (in nft_creator_tiers). */
-export async function hasCreatorNft(walletAddress: string): Promise<boolean> {
-  const tier = await getBestCreatorTierForWallet(walletAddress);
+export async function hasCreatorNft(
+  walletAddress: string,
+  rpcOptions?: CreatorNftsRpcOptions
+): Promise<boolean> {
+  const tier = await getBestCreatorTierForWallet(walletAddress, rpcOptions);
   return tier != null;
 }
 
