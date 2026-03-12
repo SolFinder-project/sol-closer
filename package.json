@@ -8,6 +8,8 @@
     "dev:mobile": "node scripts/print-mobile-url.js && next dev --hostname 0.0.0.0",
     "create-empty-accounts": "node scripts/create-empty-accounts.mjs",
     "create-nft-creator-collection": "node scripts/create-nft-creator-collection.mjs",
+    "generate-collection-wallet": "node scripts/generate-collection-wallet.mjs",
+    "check-nft-creator-collection": "node scripts/check-nft-creator-collection.mjs",
     "update-nft-creator-collection-name": "node scripts/update-nft-creator-collection-name.mjs",
     "dev:tunnel": "npx ngrok http 3000",
     "build": "next build",

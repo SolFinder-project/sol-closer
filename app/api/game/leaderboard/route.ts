@@ -10,6 +10,18 @@ import { computeSilverstoneRaceTime } from '@/lib/silverstoneEngine';
 
 export const dynamic = 'force-dynamic';
 
+/** Build proxy RPC options from request so DAS works when route runs on server (avoids 401 / Allowed Domains). */
+function dasOptionsFromRequest(request: NextRequest): { rpcUrl: string; fetch: (url: string, init?: RequestInit) => Promise<Response> } | undefined {
+  const origin = request.headers.get('origin')?.trim();
+  const referer = request.headers.get('referer')?.trim();
+  const baseUrl = origin || (referer ? (() => { try { return new URL(referer).origin; } catch { return ''; } })() : '');
+  if (!baseUrl) return undefined;
+  const rpcUrl = `${baseUrl.replace(/\/$/, '')}/api/rpc`;
+  const customFetch: (url: string, init?: RequestInit) => Promise<Response> = (url, init) =>
+    fetch(url, { ...init, headers: { ...(init?.headers as Record<string, string>), ...(origin && { Origin: origin }), ...(referer && { Referer: referer }) } });
+  return { rpcUrl, fetch: customFetch };
+}
+
 const FEE_PERCENT = 0.1; // 10% platform fee; 90% to prize pool
 
 /**
@@ -49,10 +61,11 @@ export async function GET(request: NextRequest) {
   const results = await getResultsByEvent(eventId);
   const top3Wallets = new Set(results.map((r) => r.wallet_address));
   const remainingRegistrations = registrations.filter((r) => !top3Wallets.has(r.wallet_address));
+  const dasOpts = dasOptionsFromRequest(request);
   const remainingWithTimes = await Promise.all(
     remainingRegistrations.map(async (r) => ({
       wallet_address: r.wallet_address,
-      lap_time_ms: await getRaceTimeMsForRegistration(eventId, r.wallet_address, r.upgrade_config),
+      lap_time_ms: await getRaceTimeMsForRegistration(eventId, r.wallet_address, r.upgrade_config, dasOpts),
     }))
   );
   remainingWithTimes.sort((a, b) => a.lap_time_ms - b.lap_time_ms);

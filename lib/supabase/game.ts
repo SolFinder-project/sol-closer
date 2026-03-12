@@ -105,6 +105,9 @@ export async function getTransactionCountForWallet(
   return count ?? 0;
 }
 
+/** Optional RPC/DAS options (e.g. proxy + headers) when resolving Creator tier from server. */
+export type GameRpcOptions = { rpcUrl?: string; fetch?: (url: string, init?: RequestInit) => Promise<Response> };
+
 /**
  * Temps de course (ms) pour une inscription : utilise la semaine de l'event + tx count pour le tie-breaker.
  * Applies Creator tier race time bonus (0 / −1.5 s / −4 s / −6 s + collector −1 s) at the caller so the Silverstone engine stays pure.
@@ -112,7 +115,8 @@ export async function getTransactionCountForWallet(
 export async function getRaceTimeMsForRegistration(
   eventId: string,
   walletAddress: string,
-  upgradeConfig: UpgradeConfig
+  upgradeConfig: UpgradeConfig,
+  rpcOptions?: GameRpcOptions
 ): Promise<number> {
   const event = await getEventById(eventId);
   if (!event) return SILVERSTONE_BASE_TIME_MS;
@@ -121,7 +125,7 @@ export async function getRaceTimeMsForRegistration(
   const interactionCount = await getTransactionCountForWallet(walletAddress, startMs, endMs);
   const baseMs = computeRaceTimeMs(upgradeConfig, interactionCount);
   const { getCreatorRaceTimeBonusMs } = await import('@/lib/nftCreator');
-  const bonusMs = await getCreatorRaceTimeBonusMs(walletAddress);
+  const bonusMs = await getCreatorRaceTimeBonusMs(walletAddress, rpcOptions);
   return Math.max(0, baseMs - bonusMs);
 }
 

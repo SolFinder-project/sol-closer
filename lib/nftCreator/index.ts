@@ -140,10 +140,13 @@ async function getCreatorTiersMap(): Promise<Map<string, NftCreatorTier>> {
 const TIER_ORDER: NftCreatorTier[] = ['platinum', 'gold', 'silver', 'standard'];
 
 /** Best Creator tier for wallet (among NFTs they hold that are in nft_creator_tiers). */
-export async function getBestCreatorTierForWallet(walletAddress: string): Promise<NftCreatorTier | null> {
+export async function getBestCreatorTierForWallet(
+  walletAddress: string,
+  rpcOptions?: CreatorNftsRpcOptions
+): Promise<NftCreatorTier | null> {
   const [tiersMap, walletMints] = await Promise.all([
     getCreatorTiersMap(),
-    getClassicNftMintsByOwner(new PublicKey(walletAddress)),
+    getClassicNftMintsByOwner(new PublicKey(walletAddress), rpcOptions),
   ]);
   if (tiersMap.size === 0 || walletMints.length === 0) return null;
   const walletMintSet = new Set(walletMints.map((m) => m.mint).filter(Boolean));
@@ -158,14 +161,14 @@ export async function getBestCreatorTierForWallet(walletAddress: string): Promis
   return null;
 }
 
+/** Options for RPC/DAS when calling from server (proxy + headers to avoid 401). */
+export type CreatorNftsRpcOptions = { rpcUrl?: string; fetch?: import('@/lib/solana/das').DasFetch };
+
 /** Whether wallet holds at least one NFT from SolPit Creator collection (in nft_creator_tiers). */
 export async function hasCreatorNft(walletAddress: string): Promise<boolean> {
   const tier = await getBestCreatorTierForWallet(walletAddress);
   return tier != null;
 }
-
-/** Options for RPC/DAS when calling from server (proxy + headers to avoid 401). */
-export type CreatorNftsRpcOptions = { rpcUrl?: string; fetch?: import('@/lib/solana/das').DasFetch };
 
 /** Creator NFTs held by wallet with name and tier (for F1/reclaim benefits UI). */
 export async function getCreatorNftsForWallet(
@@ -198,8 +201,11 @@ export async function getCreatorNftsForWallet(
 }
 
 /** Points bonus (per reclaim) for Creator tier + collector bonus (2+ NFTs). Uses same source as getCreatorNftsForWallet (banner). */
-export async function getCreatorPointsBonus(walletAddress: string): Promise<number> {
-  const nfts = await getCreatorNftsForWallet(walletAddress);
+export async function getCreatorPointsBonus(
+  walletAddress: string,
+  rpcOptions?: CreatorNftsRpcOptions
+): Promise<number> {
+  const nfts = await getCreatorNftsForWallet(walletAddress, rpcOptions);
   if (nfts.length === 0) return 0;
   const best = nfts.reduce((a, b) =>
     TIER_ORDER.indexOf(b.tier) < TIER_ORDER.indexOf(a.tier) ? b : a
@@ -210,8 +216,11 @@ export async function getCreatorPointsBonus(walletAddress: string): Promise<numb
 }
 
 /** Race time bonus in ms (subtract from lap time) for Creator tier + collector bonus (2+ NFTs). Uses same source as getCreatorNftsForWallet (banner). */
-export async function getCreatorRaceTimeBonusMs(walletAddress: string): Promise<number> {
-  const nfts = await getCreatorNftsForWallet(walletAddress);
+export async function getCreatorRaceTimeBonusMs(
+  walletAddress: string,
+  rpcOptions?: CreatorNftsRpcOptions
+): Promise<number> {
+  const nfts = await getCreatorNftsForWallet(walletAddress, rpcOptions);
   if (nfts.length === 0) return 0;
   const best = nfts.reduce((a, b) =>
     TIER_ORDER.indexOf(b.tier) < TIER_ORDER.indexOf(a.tier) ? b : a
@@ -225,13 +234,19 @@ const DEFAULT_FEE_PERCENT = Number(process.env.NEXT_PUBLIC_SERVICE_FEE_PERCENTAG
 const DEFAULT_REFERRAL_PERCENT = Number(process.env.NEXT_PUBLIC_REFERRAL_FEE_PERCENTAGE || 10);
 
 /** Effective reclaim fee % for payer wallet (by tier). For use in closers when tier is known server-side or from API. */
-export async function getEffectiveReclaimFeePercent(payerWalletAddress: string): Promise<number> {
-  const tier = await getBestCreatorTierForWallet(payerWalletAddress);
+export async function getEffectiveReclaimFeePercent(
+  payerWalletAddress: string,
+  rpcOptions?: CreatorNftsRpcOptions
+): Promise<number> {
+  const tier = await getBestCreatorTierForWallet(payerWalletAddress, rpcOptions);
   return tier != null ? CREATOR_RECLAIM_FEE_PERCENT[tier] : DEFAULT_FEE_PERCENT;
 }
 
 /** Effective referral % for referrer wallet (by tier). For use in closers when tier is known server-side or from API. */
-export async function getEffectiveReferralPercent(referrerWalletAddress: string): Promise<number> {
-  const tier = await getBestCreatorTierForWallet(referrerWalletAddress);
+export async function getEffectiveReferralPercent(
+  referrerWalletAddress: string,
+  rpcOptions?: CreatorNftsRpcOptions
+): Promise<number> {
+  const tier = await getBestCreatorTierForWallet(referrerWalletAddress, rpcOptions);
   return tier != null ? CREATOR_REFERRAL_PERCENT[tier] : DEFAULT_REFERRAL_PERCENT;
 }
