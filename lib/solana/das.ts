@@ -309,10 +309,15 @@ export async function getCoreAssetsByOwner(owner: PublicKey): Promise<CoreAssetF
 /**
  * Fetch Core asset details via DAS getAsset; return collection address if the asset is in a collection.
  * Used when building Metaplex Core burn instruction (collection account required for assets in a collection).
+ * Optional options.rpcUrl and options.fetch: use proxy + headers when calling from server (avoids 401).
  */
-export async function getCoreAssetCollection(assetId: string): Promise<string | null> {
-  const rpcUrl = getRpcUrl();
-  const res = await fetch(rpcUrl, {
+export async function getCoreAssetCollection(
+  assetId: string,
+  options?: { rpcUrl?: string; fetch?: DasFetch }
+): Promise<string | null> {
+  const rpcUrl = options?.rpcUrl ?? getRpcUrl();
+  const doFetch = options?.fetch ?? fetch;
+  const res = await doFetch(rpcUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

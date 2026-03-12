@@ -10,15 +10,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCoreAssetCollection } from '@/lib/solana/das';
 import { isValidSolanaAddress } from '@/lib/solana/validators';
 import { getRpcUrl } from '@/lib/solana/connection';
+import { dasOptionsFromRequest } from '@/lib/api/dasOptionsFromRequest';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
-import { mplTokenMetadata, findMetadataPda, safeFetchMetadataFromSeeds } from '@metaplex-foundation/mpl-token-metadata';
+import { mplTokenMetadata, safeFetchMetadataFromSeeds } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey } from '@metaplex-foundation/umi-public-keys';
 
 const EXPECTED_COLLECTION_MINT = process.env.NFT_CREATOR_COLLECTION_MINT?.trim() ?? '';
 
-async function getOnChainCollectionMint(mint: string): Promise<{ collectionMint: string | null; verified: boolean }> {
+async function getOnChainCollectionMint(
+  mint: string,
+  rpcUrlOverride?: string
+): Promise<{ collectionMint: string | null; verified: boolean }> {
   try {
-    const rpcUrl = getRpcUrl();
+    const rpcUrl = rpcUrlOverride ?? getRpcUrl();
     const umi = createUmi(rpcUrl).use(mplTokenMetadata());
     const mintPk = publicKey(mint);
     // safeFetchMetadataFromSeeds already derives the metadata PDA internally; no need to use findMetadataPda here.
@@ -46,11 +50,14 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // 1) Source of truth: on-chain Token Metadata.
-  const { collectionMint: onChainCollectionMint, verified } = await getOnChainCollectionMint(mint);
+  const dasOpts = dasOptionsFromRequest(request);
+  const rpcUrl = dasOpts?.rpcUrl;
 
-  // 2) Secondary signal: DAS Core asset grouping (may lag, but useful for debug / explorers).
-  const dasCollectionMint = await getCoreAssetCollection(mint);
+  // 1) Source of truth: on-chain Token Metadata (use proxy URL when available so RPC succeeds from server).
+  const { collectionMint: onChainCollectionMint, verified } = await getOnChainCollectionMint(mint, rpcUrl);
+
+  // 2) Secondary signal: DAS getAsset grouping (use proxy + fetch so Helius Allowed Domains accept from server).
+  const dasCollectionMint = await getCoreAssetCollection(mint, dasOpts ?? undefined);
 
   const expected = EXPECTED_COLLECTION_MINT && isValidSolanaAddress(EXPECTED_COLLECTION_MINT)
     ? EXPECTED_COLLECTION_MINT
