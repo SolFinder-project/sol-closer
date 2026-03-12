@@ -13,20 +13,9 @@ import {
   getEffectiveReferralPercent,
 } from '@/lib/nftCreator';
 import { isValidSolanaAddress } from '@/lib/solana/validators';
+import { dasOptionsFromRequest } from '@/lib/api/dasOptionsFromRequest';
 
 export const dynamic = 'force-dynamic';
-
-/** Build proxy RPC options from request so DAS works when route runs on server (avoids 401 / Allowed Domains). */
-function dasOptionsFromRequest(request: NextRequest): { rpcUrl: string; fetch: (url: string, init?: RequestInit) => Promise<Response> } | undefined {
-  const origin = request.headers.get('origin')?.trim();
-  const referer = request.headers.get('referer')?.trim();
-  const baseUrl = origin || (referer ? (() => { try { return new URL(referer).origin; } catch { return ''; } })() : '');
-  if (!baseUrl) return undefined;
-  const rpcUrl = `${baseUrl.replace(/\/$/, '')}/api/rpc`;
-  const customFetch: (url: string, init?: RequestInit) => Promise<Response> = (url, init) =>
-    fetch(url, { ...init, headers: { ...(init?.headers as Record<string, string>), ...(origin && { Origin: origin }), ...(referer && { Referer: referer }) } });
-  return { rpcUrl, fetch: customFetch };
-}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

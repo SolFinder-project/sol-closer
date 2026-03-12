@@ -4,23 +4,12 @@ import { supabase } from '@/lib/supabase/client';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { getClassicNftMintsByOwner } from '@/lib/solana/das';
 import { getCreatorNftsForWallet } from '@/lib/nftCreator';
+import { dasOptionsFromRequest } from '@/lib/api/dasOptionsFromRequest';
 import type { NftCreatorSubmissionStatus } from '@/types/nftCreator';
 
 export const dynamic = 'force-dynamic';
 
 const VALID_TIERS = ['standard', 'silver', 'gold', 'platinum'];
-
-/** Build proxy RPC options from request so DAS/RPC work when route runs on server (avoids 401). */
-function dasOptionsFromRequest(request: NextRequest): { rpcUrl: string; fetch: (url: string, init?: RequestInit) => Promise<Response> } | undefined {
-  const origin = request.headers.get('origin')?.trim();
-  const referer = request.headers.get('referer')?.trim();
-  const baseUrl = origin || (referer ? (() => { try { return new URL(referer).origin; } catch { return ''; } })() : '');
-  if (!baseUrl) return undefined;
-  const rpcUrl = `${baseUrl.replace(/\/$/, '')}/api/rpc`;
-  const customFetch: (url: string, init?: RequestInit) => Promise<Response> = (url, init) =>
-    fetch(url, { ...init, headers: { ...(init?.headers as Record<string, string>), ...(origin && { Origin: origin }), ...(referer && { Referer: referer }) } });
-  return { rpcUrl, fetch: customFetch };
-}
 
 /**
  * GET /api/nft-creator/submissions?wallet=<address>
