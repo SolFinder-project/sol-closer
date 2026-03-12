@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { supabase } from '@/lib/supabase/client';
-import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { getClassicNftMintsByOwner } from '@/lib/solana/das';
 import { getCreatorNftsForWallet } from '@/lib/nftCreator';
 import type { NftCreatorSubmissionStatus } from '@/types/nftCreator';
-
-const VALID_TIERS = ['standard', 'silver', 'gold', 'platinum'];
 
 export const dynamic = 'force-dynamic';
 
@@ -48,33 +45,11 @@ export async function GET(request: NextRequest) {
     }
 
     const rows = (data ?? []) as Record<string, unknown>[];
-
-    const admin = getSupabaseAdmin();
-    if (admin) {
-      const toBackfill = rows.filter(
-        (r) =>
-          r.status === 'finalized' &&
-          typeof r.mint_address === 'string' &&
-          r.mint_address.trim() &&
-          typeof r.tier === 'string' &&
-          VALID_TIERS.includes(r.tier as string)
-      ) as { mint_address: string; tier: string }[];
-      if (toBackfill.length > 0) {
-        const now = new Date().toISOString();
-        for (const { mint_address, tier } of toBackfill) {
-          await admin.from('nft_creator_tiers').upsert(
-            { mint_address: mint_address.trim(), tier, created_at: now },
-            { onConflict: 'mint_address' }
-          );
-        }
-      }
-    }
-
     const hasFinalizedWithMint = rows.some(
       (r) => r.status === 'finalized' && typeof r.mint_address === 'string' && r.mint_address.trim()
     );
 
-    let heldMints: Set<string> | null = null;
+    let heldMints = new Set<string>();
     if (hasFinalizedWithMint) {
       try {
         const nfts = await getClassicNftMintsByOwner(new PublicKey(wallet), dasOpts);
@@ -88,11 +63,7 @@ export async function GET(request: NextRequest) {
       const status = row.status as NftCreatorSubmissionStatus;
       const mintAddress = typeof row.mint_address === 'string' ? row.mint_address.trim() : null;
       const inWallet =
-        status !== 'finalized' || !mintAddress
-          ? true
-          : heldMints === null
-            ? true
-            : heldMints.has(mintAddress);
+        status !== 'finalized' || !mintAddress ? true : heldMints.has(mintAddress);
 
       return {
         id: row.id,
