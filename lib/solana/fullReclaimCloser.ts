@@ -12,6 +12,7 @@ import {
 import {
   createCloseAccountInstruction,
   createBurnCheckedInstruction,
+  createHarvestWithheldTokensToMintInstruction,
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
 } from '@solana/spl-token';
@@ -198,6 +199,36 @@ export async function fullReclaimSingleTx(
 
       const transaction = new Transaction();
       transaction.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 }));
+
+      // Token-2022: harvest withheld fees to mint before close, else CloseAccount fails with 0x23.
+      const token2022ByMint = new Map<string, { mint: PublicKey; sources: PublicKey[] }>();
+      for (const account of emptyBatch) {
+        const programId = account.programId ?? TOKEN_PROGRAM_ID;
+        if (programId.equals(TOKEN_2022_PROGRAM_ID)) {
+          const key = account.mint.toBase58();
+          if (!token2022ByMint.has(key)) token2022ByMint.set(key, { mint: account.mint, sources: [] });
+          token2022ByMint.get(key)!.sources.push(account.pubkey);
+        }
+      }
+      for (const account of dustBatch) {
+        const programId = account.programId ?? TOKEN_PROGRAM_ID;
+        if (programId.equals(TOKEN_2022_PROGRAM_ID)) {
+          const key = account.mint.toBase58();
+          if (!token2022ByMint.has(key)) token2022ByMint.set(key, { mint: account.mint, sources: [] });
+          token2022ByMint.get(key)!.sources.push(account.pubkey);
+        }
+      }
+      for (const nft of nftBatch) {
+        const programId = nft.programId ?? TOKEN_PROGRAM_ID;
+        if (programId.equals(TOKEN_2022_PROGRAM_ID)) {
+          const key = nft.mint.toBase58();
+          if (!token2022ByMint.has(key)) token2022ByMint.set(key, { mint: nft.mint, sources: [] });
+          token2022ByMint.get(key)!.sources.push(nft.pubkey);
+        }
+      }
+      for (const { mint, sources } of token2022ByMint.values()) {
+        transaction.add(createHarvestWithheldTokensToMintInstruction(mint, sources, TOKEN_2022_PROGRAM_ID));
+      }
 
       for (const account of emptyBatch) {
         const programId = account.programId ?? TOKEN_PROGRAM_ID;

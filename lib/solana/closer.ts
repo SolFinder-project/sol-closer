@@ -6,6 +6,7 @@ import {
 } from '@solana/web3.js';
 import { 
   createCloseAccountInstruction,
+  createHarvestWithheldTokensToMintInstruction,
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
 } from '@solana/spl-token';
@@ -86,6 +87,20 @@ export async function closeTokenAccounts(
 
       const transaction = new Transaction();
       transaction.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 600_000 }));
+
+      // Token-2022: harvest withheld fees to mint before close, else CloseAccount fails with 0x23.
+      const token2022ByMint = new Map<string, { mint: PublicKey; sources: PublicKey[] }>();
+      for (const account of batch) {
+        const programId = account.programId || TOKEN_PROGRAM_ID;
+        if (programId.equals(TOKEN_2022_PROGRAM_ID)) {
+          const key = account.mint.toBase58();
+          if (!token2022ByMint.has(key)) token2022ByMint.set(key, { mint: account.mint, sources: [] });
+          token2022ByMint.get(key)!.sources.push(account.pubkey);
+        }
+      }
+      for (const { mint, sources } of token2022ByMint.values()) {
+        transaction.add(createHarvestWithheldTokensToMintInstruction(mint, sources, TOKEN_2022_PROGRAM_ID));
+      }
 
       let batchReclaimable = 0;
 
