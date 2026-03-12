@@ -40,13 +40,14 @@ export const SOLANA_MAX_TX_SIZE_BYTES = 1232;
 
 /** Reserve for setComputeUnitLimit + fee transfer + referral transfer. */
 export const RECLAIM_IX_BUDGET_PER_TX = SOLANA_MAX_INSTRUCTIONS_PER_TX - 4;
-/** Max unique accounts per legacy tx (wallet + fee + referrer + reclaim accounts). Stay under ~35 total. */
-export const RECLAIM_ACCOUNT_BUDGET_PER_TX = 22;
+/** Max unique accounts per legacy tx (wallet + fee + referrer + reclaim accounts). Stay under 1232 bytes.
+ *  Reduced from 22 to 14 to leave room for Token-2022 harvest-withheld instructions (extra ix + accounts). */
+export const RECLAIM_ACCOUNT_BUDGET_PER_TX = 14;
 
-/** Max close-empty per tx (1 account each + wallet/fee/referral). Size-safe for 1232 bytes. */
-export const MAX_EMPTY_CLOSE_PER_TX = 12;
-/** Max burn+close (dust or SPL NFT) per tx: 2 ix + 2 accounts each. Size-safe. */
-export const MAX_BURN_CLOSE_PER_TX = 5;
+/** Max close-empty per tx (1 account each + wallet/fee/referral). Size-safe for 1232 bytes including Token-2022 harvest. */
+export const MAX_EMPTY_CLOSE_PER_TX = 8;
+/** Max burn+close (dust or SPL NFT) per tx: 2 ix + 2 accounts each. Leave room for Token-2022 harvest. */
+export const MAX_BURN_CLOSE_PER_TX = 4;
 /** Max single-ix reclaim (Pump PDA, PumpSwap PDA) per tx. Size-safe. */
 export const MAX_SINGLE_IX_RECLAIM_PER_TX = 12;
 /**
