@@ -17,6 +17,7 @@ import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
 } from '@solana/spl-token';
+import { filterToken2022MintsWithTransferFee } from './token2022Harvest';
 import { getConnection } from './connection';
 import { sendAndConfirmWithRetry } from './sendAndConfirmWithRetry';
 import { MPL_CORE_PROGRAM_ID } from './constants';
@@ -214,7 +215,8 @@ export async function burnNftAccounts(
           token2022ByMint.get(key)!.sources.push(account.pubkey);
         }
       }
-      for (const { mint, sources } of token2022ByMint.values()) {
+      const token2022WithFee = await filterToken2022MintsWithTransferFee(connection, token2022ByMint);
+      for (const { mint, sources } of token2022WithFee.values()) {
         transaction.add(createHarvestWithheldTokensToMintInstruction(mint, sources, TOKEN_2022_PROGRAM_ID));
       }
 
