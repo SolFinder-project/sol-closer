@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { closeEventAndWriteResults } from '@/lib/supabase/game';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { dasOptionsFromRequest } from '@/lib/api/dasOptionsFromRequest';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,7 @@ export const dynamic = 'force-dynamic';
  * Header: x-f1-admin-secret or body adminSecret (must match F1_ADMIN_SECRET).
  * Closes the event and writes results (top 3, prize_sol). Manual distribution.
  * Uses service role so RLS cannot block updates/inserts.
+ * Passes RPC options from request so Creator bonus (getCreatorRaceTimeBonusMs) does not 401 when run on server.
  */
 export async function POST(request: NextRequest) {
   const secret = process.env.F1_ADMIN_SECRET;
@@ -41,7 +43,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = await closeEventAndWriteResults(eventId, adminClient);
+  const rpcOptions = dasOptionsFromRequest(request);
+  const result = await closeEventAndWriteResults(eventId, adminClient, rpcOptions ?? undefined);
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }

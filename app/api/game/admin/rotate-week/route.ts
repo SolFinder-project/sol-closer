@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { closeCurrentWeekAndStartNext } from '@/lib/supabase/game';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { dasOptionsFromRequest } from '@/lib/api/dasOptionsFromRequest';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -39,7 +40,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = await closeCurrentWeekAndStartNext(force, testWindow, adminClient);
+  const rpcOptions = dasOptionsFromRequest(request);
+  const result = await closeCurrentWeekAndStartNext(force, testWindow, adminClient, rpcOptions ?? undefined);
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }

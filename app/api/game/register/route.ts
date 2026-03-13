@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { getEventById, insertRegistration } from '@/lib/supabase/game';
+import { getConnectionForRequest } from '@/lib/solana/connection';
 import { verifyF1EntryTx } from '@/lib/solana/verifyF1Entry';
 
 export const dynamic = 'force-dynamic';
@@ -44,7 +45,9 @@ export async function POST(request: NextRequest) {
   const expectedLamports = Math.round(Number(event.league.entry_fee_sol) * LAMPORTS_PER_SOL);
   const treasury = new PublicKey(treasuryStr);
 
-  const verification = await verifyF1EntryTx(signature, expectedLamports, treasury, wallet);
+  // Use proxy Connection so getParsedTransaction does not 401 (Helius Allowed Domains) when route runs on server.
+  const connection = getConnectionForRequest(request);
+  const verification = await verifyF1EntryTx(signature, expectedLamports, treasury, wallet, connection);
   if (!verification.ok) {
     return NextResponse.json({ error: verification.error ?? 'Transaction verification failed' }, { status: 400 });
   }

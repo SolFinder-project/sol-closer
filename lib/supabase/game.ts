@@ -586,10 +586,12 @@ const FEE_PERCENT = 0.1;
 /**
  * Close a single event: set status=closed, closed_at_ms, write results (Silverstone engine + tie-breaker).
  * @param sb When provided (e.g. service role), used for all writes so RLS does not block admin rotation.
+ * @param rpcOptions When provided (e.g. from request), used for Creator bonus so RPC does not 401 (Helius Allowed Domains).
  */
 async function closeOneEventAndWriteResults(
   ev: WeeklyEvent & { league: League },
-  sb?: SupabaseClient | null
+  sb?: SupabaseClient | null,
+  rpcOptions?: GameRpcOptions
 ): Promise<{ ok: boolean; error?: string }> {
   const db = sb ?? supabase;
   const nowMs = Date.now();
@@ -614,7 +616,12 @@ async function closeOneEventAndWriteResults(
   for (const r of registrations) {
     const interactionCount = await getTransactionCountForWallet(r.wallet_address, startMs, endMs);
     const baseMs = computeRaceTimeMs(r.upgrade_config, interactionCount);
-    const bonusMs = await getCreatorRaceTimeBonusMs(r.wallet_address);
+    let bonusMs = 0;
+    try {
+      bonusMs = await getCreatorRaceTimeBonusMs(r.wallet_address, rpcOptions);
+    } catch (e) {
+      console.warn('[game] getCreatorRaceTimeBonusMs failed, using 0:', e);
+    }
     const lap_time_ms = Math.max(0, baseMs - bonusMs);
     rows.push({ wallet_address: r.wallet_address, lap_time_ms });
   }
@@ -642,10 +649,12 @@ async function closeOneEventAndWriteResults(
 /**
  * Close one event and all other open events of the same week (same week_start). Ensures all leagues close together.
  * @param adminClient When provided (e.g. service role), used for writes and same-week fetch so RLS does not block admin rotation.
+ * @param rpcOptions When provided (e.g. from API request), used for Creator race time bonus so RPC does not 401.
  */
 export async function closeEventAndWriteResults(
   eventId: string,
-  adminClient?: SupabaseClient | null
+  adminClient?: SupabaseClient | null,
+  rpcOptions?: GameRpcOptions
 ): Promise<{ ok: boolean; error?: string }> {
   const event = await getEventById(eventId);
   if (!event) return { ok: false, error: 'Event not found' };
@@ -658,7 +667,7 @@ export async function closeEventAndWriteResults(
     .eq('week_start', event.week_start)
     .eq('status', 'open');
   if (fetchErr || !sameWeek?.length) {
-    const result = await closeOneEventAndWriteResults(event, adminClient);
+    const result = await closeOneEventAndWriteResults(event, adminClient, rpcOptions);
     return result;
   }
 
@@ -669,7 +678,7 @@ export async function closeEventAndWriteResults(
 
   for (const ev of eventsToClose) {
     if (!ev) continue;
-    const result = await closeOneEventAndWriteResults(ev, adminClient);
+    const result = await closeOneEventAndWriteResults(ev, adminClient, rpcOptions);
     if (!result.ok) return result;
   }
   return { ok: true };
@@ -718,11 +727,13 @@ export async function getOpenEventsWithWeekEnded(sb?: SupabaseClient | null): Pr
  * @param force If true, close all open events regardless of week_end (for testing).
  * @param testWindow If true (and force), create next week with week_start=now, week_end=now+7d so new events are open immediately.
  * @param adminClient When provided (e.g. service role), used for all writes and for listing open events so RLS does not block admin rotation.
+ * @param rpcOptions When provided (e.g. from API request), used for Creator bonus when writing results so RPC does not 401.
  */
 export async function closeCurrentWeekAndStartNext(
   force = false,
   testWindow = false,
-  adminClient?: SupabaseClient | null
+  adminClient?: SupabaseClient | null,
+  rpcOptions?: GameRpcOptions
 ): Promise<{
   ok: boolean;
   error?: string;
@@ -740,7 +751,7 @@ export async function closeCurrentWeekAndStartNext(
   let lastClosedWeekEndIso: string | null = null;
   while (open.length > 0) {
     lastClosedWeekEndIso = open[0].week_end;
-    const result = await closeEventAndWriteResults(open[0].id, adminClient);
+    const result = await closeEventAndWriteResults(open[0].id, adminClient, rpcOptions);
     if (!result.ok) return { ok: false, error: `Close ${open[0].id}: ${result.error}` };
     closed.push(open[0].id);
     open = await getOpenEventsForCurrentWeek(adminClient);
