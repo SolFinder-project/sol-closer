@@ -10,38 +10,47 @@ interface ReferralStats {
   totalEarnings: number;
 }
 
+/** Read referrer from URL (ref=) or sessionStorage synchronously so first render has it (avoids effective-fee race with 10% default). */
+function getInitialReferrer(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const refWallet = params.get('ref');
+  if (refWallet) {
+    const cleaned = refWallet.trim();
+    if (isValidSolanaAddress(cleaned)) {
+      sessionStorage.setItem('solcloser_referrer_wallet', cleaned);
+      return cleaned;
+    }
+  }
+  const saved = sessionStorage.getItem('solcloser_referrer_wallet');
+  if (saved) {
+    const cleaned = saved.trim();
+    return isValidSolanaAddress(cleaned) ? cleaned : null;
+  }
+  return null;
+}
+
 export function useReferral() {
   const { publicKey } = useWallet();
   const [referralCode, setReferralCode] = useState<string>('');
   const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
-  const [referrerWallet, setReferrerWallet] = useState<string | null>(null);
+  const [referrerWallet, setReferrerWallet] = useState<string | null>(getInitialReferrer);
 
-  // Capture ref from URL or sessionStorage on mount. Run first so we have referrer before any navigation.
+  // Clean URL when ref was in query (state already set by getInitialReferrer). Keep session in sync on hydration.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const refWallet = params.get('ref');
-
     if (refWallet) {
-      const cleanedWallet = refWallet.trim();
-      if (isValidSolanaAddress(cleanedWallet)) {
-        sessionStorage.setItem('solcloser_referrer_wallet', cleanedWallet);
-        setReferrerWallet(cleanedWallet);
-      }
       const url = new URL(window.location.href);
       url.searchParams.delete('ref');
       window.history.replaceState({}, '', url.toString());
       return;
     }
-
     const savedWallet = sessionStorage.getItem('solcloser_referrer_wallet');
     if (savedWallet) {
       const cleanedSaved = savedWallet.trim();
-      if (isValidSolanaAddress(cleanedSaved)) {
-        setReferrerWallet(cleanedSaved);
-      } else {
-        sessionStorage.removeItem('solcloser_referrer_wallet');
-      }
+      if (!isValidSolanaAddress(cleanedSaved)) sessionStorage.removeItem('solcloser_referrer_wallet');
     }
   }, []);
 

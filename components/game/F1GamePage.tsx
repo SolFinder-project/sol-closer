@@ -379,7 +379,9 @@ export default function F1GamePage() {
 
   const totalSpent = Object.values(localUpgrades).reduce((a, b) => a + (Number(b) || 0), 0);
   const pointsAvailable = points ?? 0;
-  const overSpent = totalSpent > pointsAvailable;
+  const totalSpentFromServer = Object.values(currentConfig).reduce((a, b) => a + (Number(b) || 0), 0);
+  const effectivePointsAvailable = Math.max(pointsAvailable, totalSpentFromServer);
+  const overSpent = totalSpent > effectivePointsAvailable;
 
   const handleSaveUpgrades = async () => {
     if (!myRegistration || !walletStr || overSpent) return;
@@ -519,7 +521,8 @@ export default function F1GamePage() {
                       <span className="ml-2 text-amber-300"> · Registered in {myRegistration.leagueName}</span>
                       {(() => {
                         const spent = Object.values(myRegistration.upgradeConfig ?? {}).reduce((a, b) => a + (Number(b) || 0), 0);
-                        const available = Math.max(0, (points ?? 0) - spent);
+                        const effMax = Math.max(points ?? 0, spent);
+                        const available = Math.max(0, effMax - spent);
                         return (
                           <span className="block mt-1 text-gray-400">
                             Spent on upgrades: <span className="font-mono text-amber-300">{spent}</span> pts · Available: <span className="font-mono text-white">{available}</span> pts
@@ -616,14 +619,14 @@ export default function F1GamePage() {
             <div className="card-cyber border-amber-500/20 bg-amber-500/5 p-6 mb-10">
               <h2 className="text-lg font-bold font-[family-name:var(--font-orbitron)] text-white mb-4">Upgrades (Pit stop)</h2>
               <p className="text-sm text-gray-400 mb-4">
-                Spend your points (max {pointsAvailable} this week). Silverstone 52 laps: aero, power, tyre mgmt, balance, stability, traction, braking, response. Equilibrate or you get time penalties.
+                Spend your points (max {effectivePointsAvailable} this week). Silverstone 52 laps: aero, power, tyre mgmt, balance, stability, traction, braking, response. Equilibrate or you get time penalties.
               </p>
               <div className="space-y-3 mb-4">
                 {UPGRADE_CATEGORIES.map((cat) => {
                   const currentVal = localUpgrades[cat.id] ?? 0;
                   const savedVal = currentConfig[cat.id] ?? 0;
                   const otherSpent = totalSpent - currentVal;
-                  const maxForCategory = Math.max(savedVal, pointsAvailable - otherSpent);
+                  const maxForCategory = Math.max(savedVal, effectivePointsAvailable - otherSpent);
                   const minForCategory = savedVal;
                   return (
                     <div key={cat.id} className="flex items-center gap-3">
@@ -661,8 +664,8 @@ export default function F1GamePage() {
                     );
                   })}
                 </p>
-                <p className={`text-sm font-medium ${overSpent ? 'text-red-400' : totalSpent <= pointsAvailable ? 'text-neon-green' : 'text-gray-400'}`}>
-                  Total saved: <span className="font-mono">{Object.values(currentConfig).reduce((a, b) => a + (Number(b) || 0), 0)}</span> / {pointsAvailable} pts
+                <p className={`text-sm font-medium ${overSpent ? 'text-red-400' : totalSpent <= effectivePointsAvailable ? 'text-neon-green' : 'text-gray-400'}`}>
+                  Total saved: <span className="font-mono">{Object.values(currentConfig).reduce((a, b) => a + (Number(b) || 0), 0)}</span> / {effectivePointsAvailable} pts
                   {overSpent && ' (over limit)'}
                 </p>
               </div>

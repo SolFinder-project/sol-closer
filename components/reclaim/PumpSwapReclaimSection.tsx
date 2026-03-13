@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { scanPumpSwapPdas, pumpSwapReclaimableSol, type PumpSwapPdaAccount } from '@/lib/solana/pumpSwap';
@@ -30,14 +30,18 @@ export default function PumpSwapReclaimSection({ wallet, onSuccess }: Props) {
   const [success, setSuccess] = useState<string | null>(null);
   const [effectiveFeePercent, setEffectiveFeePercent] = useState(20);
   const [effectiveReferralPercent, setEffectiveReferralPercent] = useState(10);
+  const effectiveFeeReferrerRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!wallet) return;
+    effectiveFeeReferrerRef.current = referrerWallet;
+    const referrerWhenRequested = referrerWallet;
     const params = new URLSearchParams({ wallet: wallet.toString() });
     if (referrerWallet) params.set('referrer', referrerWallet);
     fetch(`/api/nft-creator/effective-fee?${params}`)
       .then((r) => r.json())
       .then((d) => {
+        if (effectiveFeeReferrerRef.current !== referrerWhenRequested) return;
         if (typeof d.feePercent === 'number') setEffectiveFeePercent(d.feePercent);
         if (typeof d.referralPercent === 'number') setEffectiveReferralPercent(d.referralPercent);
       })

@@ -93,6 +93,8 @@ export default function AccountScanner({ onNavigateToGame, onReclaimSuccess }: A
   const [hideDustSection, setHideDustSection] = useState(false);
   /** Ref to avoid race: only update balance if the wallet did not change during the fetch. */
   const walletKeyRef = useRef<string | null>(null);
+  /** Ref for effective-fee race: only apply response if referrer still matches (avoid 10% overwriting 17%). */
+  const effectiveFeeReferrerRef = useRef<string | null>(null);
   /** Post-reclaim F1 points popup: show after any successful reclaim with SOL reclaimed > 0 */
   const [reclaimPointsPopup, setReclaimPointsPopup] = useState<{ points: number; solReclaimed: number } | null>(null);
   /** SolPit Creator NFTs in wallet (for benefits banner) */
@@ -190,21 +192,25 @@ export default function AccountScanner({ onNavigateToGame, onReclaimSuccess }: A
     };
   }, [publicKey]);
 
-  // Effective fee/referral % by Creator tier (payer + referrer)
+  // Effective fee/referral % by Creator tier (payer + referrer). Only apply response if referrer unchanged (avoid 10% overwriting 17%).
   useEffect(() => {
     if (!publicKey) {
       setEffectiveFeePercent(20);
       setEffectiveReferralPercent(10);
       return;
     }
+    effectiveFeeReferrerRef.current = referrerWallet;
+    const referrerWhenRequested = referrerWallet;
     let cancelled = false;
     const params = new URLSearchParams({ wallet: publicKey.toString() });
     if (referrerWallet) params.set('referrer', referrerWallet);
     fetch(`/api/nft-creator/effective-fee?${params}`)
       .then((r) => r.json())
       .then((d) => {
-        if (!cancelled && typeof d.feePercent === 'number') setEffectiveFeePercent(d.feePercent);
-        if (!cancelled && typeof d.referralPercent === 'number') setEffectiveReferralPercent(d.referralPercent);
+        if (cancelled) return;
+        if (effectiveFeeReferrerRef.current !== referrerWhenRequested) return;
+        if (typeof d.feePercent === 'number') setEffectiveFeePercent(d.feePercent);
+        if (typeof d.referralPercent === 'number') setEffectiveReferralPercent(d.referralPercent);
       })
       .catch(() => {});
     return () => {
