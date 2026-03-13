@@ -211,6 +211,34 @@ export async function getPointsForWallet(
   return total;
 }
 
+/**
+ * Sum F1 Creator bonus points stored at transaction time (wallet held Creator NFT when the reclaim was made).
+ * Used so that when an NFT moves: the wallet that lost it keeps the bonus for past reclaims; the wallet that gained it does not get bonus for reclaims done before they had the NFT.
+ */
+export async function getCreatorBonusPointsFromTransactions(
+  walletAddress: string,
+  startMs: number,
+  endMs: number
+): Promise<number> {
+  try {
+    const { data: rows, error } = await supabase
+      .from('transactions')
+      .select('f1_creator_bonus_pts')
+      .eq('wallet_address', walletAddress)
+      .gte('timestamp', startMs)
+      .lte('timestamp', endMs);
+
+    if (error) return 0;
+    if (!rows?.length) return 0;
+    return (rows as { f1_creator_bonus_pts?: number | null }[]).reduce(
+      (sum, r) => sum + (Number(r.f1_creator_bonus_pts) || 0),
+      0
+    );
+  } catch {
+    return 0;
+  }
+}
+
 export async function getLeagues(): Promise<League[]> {
   const { data, error } = await supabase
     .from('leagues')
@@ -546,18 +574,24 @@ export function totalPointsSpent(config: UpgradeConfig): number {
   return SILVERSTONE_CATEGORY_IDS.reduce((sum, id) => sum + (Number(config[id] ?? 0) || 0), 0);
 }
 
-/** Update registration upgrade_config. Validates totalPointsSpent(config) <= maxPoints and no category can be reduced below already-saved value (upgrades are definitive until race day). */
+/** Update registration upgrade_config. Validates totalPointsSpent(config) <= maxPoints and no category can be reduced below already-saved value (upgrades are definitive until race day).
+ * Uses max(maxPoints, alreadySpent) so a wallet that had Creator bonus and spent it, then transferred the NFT away, is not penalized (points already spent remain valid).
+ */
 export async function updateRegistrationUpgrades(
   eventId: string,
   walletAddress: string,
   upgradeConfig: UpgradeConfig,
   maxPoints: number
 ): Promise<{ ok: boolean; error?: string }> {
-  const spent = totalPointsSpent(upgradeConfig);
-  if (spent > maxPoints) {
-    return { ok: false, error: `Points spent (${spent}) exceeds available (${maxPoints})` };
-  }
   const existing = await getRegistration(eventId, walletAddress);
+  const alreadySpent = existing?.upgrade_config && typeof existing.upgrade_config === 'object'
+    ? totalPointsSpent(existing.upgrade_config as UpgradeConfig)
+    : 0;
+  const effectiveMaxPoints = Math.max(maxPoints, alreadySpent);
+  const spent = totalPointsSpent(upgradeConfig);
+  if (spent > effectiveMaxPoints) {
+    return { ok: false, error: `Points spent (${spent}) exceeds available (${effectiveMaxPoints})` };
+  }
   if (existing?.upgrade_config && typeof existing.upgrade_config === 'object') {
     for (const id of SILVERSTONE_CATEGORY_IDS) {
       const prev = Number((existing.upgrade_config as Record<string, number>)[id] ?? 0) || 0;

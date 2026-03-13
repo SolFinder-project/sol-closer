@@ -2,13 +2,30 @@
 
 import { useReferral } from '@/hooks/useReferral';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+const DEFAULT_REFERRAL_PCT = Number(process.env.NEXT_PUBLIC_REFERRAL_FEE_PERCENTAGE || 10);
 
 export default function ReferralDashboard() {
-  const { connected } = useWallet();
+  const { connected, publicKey } = useWallet();
   const { referralCode, displayCode, referralStats, getReferralLink } = useReferral();
   const [copied, setCopied] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [referralPercent, setReferralPercent] = useState<number>(DEFAULT_REFERRAL_PCT);
+
+  useEffect(() => {
+    if (!connected || !publicKey) {
+      setReferralPercent(DEFAULT_REFERRAL_PCT);
+      return;
+    }
+    const wallet = publicKey.toBase58();
+    fetch(`/api/nft-creator/effective-fee?wallet=${encodeURIComponent(wallet)}&referrer=${encodeURIComponent(wallet)}`)
+      .then((r) => r.json())
+      .then((d: { referralPercent?: number }) => {
+        if (typeof d.referralPercent === 'number') setReferralPercent(d.referralPercent);
+      })
+      .catch(() => {});
+  }, [connected, publicKey?.toBase58()]);
 
   const copyReferralCode = () => {
     if (referralCode) {
@@ -27,7 +44,7 @@ export default function ReferralDashboard() {
     }
   };
 
-  const referralPercentage = process.env.NEXT_PUBLIC_REFERRAL_FEE_PERCENTAGE || '10';
+  const referralPercentage = String(referralPercent);
 
   if (!connected) {
     return (
@@ -39,7 +56,7 @@ export default function ReferralDashboard() {
             Connect to get your link
           </h2>
           <p className="text-sm text-gray-400 mb-6 max-w-md mx-auto">
-            Connect your wallet to access your unique referral link and earn {referralPercentage}% on every transaction from users you refer.
+            Connect your wallet to access your unique referral link and earn {referralPercentage}% on every transaction from users you refer (higher % if you hold a Creator NFT).
           </p>
           <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-neon-purple/10 border border-neon-purple/30 text-neon-purple text-sm">
             👆 Click &quot;Connect&quot; above to get started
@@ -65,7 +82,7 @@ export default function ReferralDashboard() {
         <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold font-[family-name:var(--font-orbitron)] text-white mb-2">
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-pink">Refer & earn</span>
         </h1>
-        <p className="text-sm text-gray-400">Share your link and earn {referralPercentage}% of every transaction.</p>
+        <p className="text-sm text-gray-400">Share your link and earn {referralPercentage}% of every transaction (based on your Creator tier).</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:gap-4">
@@ -132,7 +149,7 @@ export default function ReferralDashboard() {
           </li>
           <li className="flex items-start gap-2">
             <span className="text-neon-green shrink-0">3.</span>
-            You automatically receive {referralPercentage}% of the SOL they reclaim.
+            You automatically receive {referralPercentage}% of the SOL they reclaim (tier-based if you hold a Creator NFT).
           </li>
         </ul>
       </div>

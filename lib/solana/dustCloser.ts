@@ -17,6 +17,7 @@ import { sendAndConfirmWithRetry } from './sendAndConfirmWithRetry';
 import type { DustAccount } from '@/types/token-account';
 import type { CloseAccountResult } from '@/types/token-account';
 import { saveTransaction } from '@/lib/supabase/transactions';
+import { getCreatorPointsBonus } from '@/lib/nftCreator';
 import { safePublicKey, cleanEnvAddress } from './validators';
 import { logger } from '@/lib/utils/logger';
 import { MAX_BURN_CLOSE_PER_TX } from './constants';
@@ -166,9 +167,11 @@ export async function burnAndCloseDustAccounts(
     const netReceived = solReclaimed - totalFeesPaid;
 
     try {
+      const walletStr = walletAdapter.publicKey.toString();
+      const f1CreatorBonusPts = await getCreatorPointsBonus(walletStr).catch(() => 0);
       await saveTransaction({
         signature: allSignatures[0],
-        wallet_address: walletAdapter.publicKey.toString(),
+        wallet_address: walletStr,
         accounts_closed: totalClosed,
         sol_reclaimed: solReclaimed,
         fee: totalFeesPaid,
@@ -177,6 +180,7 @@ export async function burnAndCloseDustAccounts(
         referral_earned: finalReferralAmount > 0 ? finalReferralAmount / 1e9 : undefined,
         timestamp: Date.now(),
         reclaim_type: 'dust',
+        f1_creator_bonus_pts: f1CreatorBonusPts,
       });
     } catch (supabaseError) {
       logger.error('Supabase save error:', supabaseError);

@@ -4,19 +4,17 @@ import {
   getEventById,
   getCurrentGameWeekBounds,
   getPointsForWallet,
-  getTransactionCountForWallet,
+  getCreatorBonusPointsFromTransactions,
   updateRegistrationUpgrades,
   getOpenEventsForCurrentWeek,
 } from '@/lib/supabase/game';
-import { getCreatorPointsBonus } from '@/lib/nftCreator';
-import { dasOptionsFromRequest } from '@/lib/api/dasOptionsFromRequest';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/game/registration?wallet=...&eventId=...
  * Returns the user's registration for the event (if any) and current week points.
- * Points = base + Creator bonus (same as GET /api/game/points) so UI and validation stay aligned.
+ * Points = base + Creator bonus from tx-time storage (same as GET /api/game/points).
  */
 export async function GET(request: NextRequest) {
   const wallet = request.nextUrl.searchParams.get('wallet');
@@ -26,13 +24,11 @@ export async function GET(request: NextRequest) {
   }
 
   const { startMs, endMs } = await getCurrentGameWeekBounds();
-  const dasOpts = dasOptionsFromRequest(request);
-  const [pointsBase, reclaimCount, bonusPerReclaim] = await Promise.all([
+  const [pointsBase, pointsBonus] = await Promise.all([
     getPointsForWallet(wallet, startMs, endMs),
-    getTransactionCountForWallet(wallet, startMs, endMs),
-    getCreatorPointsBonus(wallet, dasOpts).catch(() => 0),
+    getCreatorBonusPointsFromTransactions(wallet, startMs, endMs),
   ]);
-  const points = pointsBase + reclaimCount * bonusPerReclaim;
+  const points = pointsBase + pointsBonus;
 
   if (!eventId) {
     // Return points and registration status for open events only (current week). After rotation = new week, no registrations.
@@ -103,14 +99,11 @@ export async function PUT(request: NextRequest) {
 
   const config = upgradeConfig ?? {};
   const { startMs, endMs } = await getCurrentGameWeekBounds();
-  // Use same total points as GET /api/game/points (base + Creator bonus) so validation matches UI.
-  const dasOpts = dasOptionsFromRequest(request);
-  const [pointsBase, reclaimCount, bonusPerReclaim] = await Promise.all([
+  const [pointsBase, pointsBonus] = await Promise.all([
     getPointsForWallet(wallet, startMs, endMs),
-    getTransactionCountForWallet(wallet, startMs, endMs),
-    getCreatorPointsBonus(wallet, dasOpts).catch(() => 0),
+    getCreatorBonusPointsFromTransactions(wallet, startMs, endMs),
   ]);
-  const maxPoints = pointsBase + reclaimCount * bonusPerReclaim;
+  const maxPoints = pointsBase + pointsBonus;
   const result = await updateRegistrationUpgrades(eventId, wallet, config, maxPoints);
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });

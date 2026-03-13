@@ -15,6 +15,7 @@ import type { CloseAccountResult } from '@/types/token-account';
 import type { PumpSwapPdaAccount } from './pumpSwap';
 import { buildClosePumpSwapPdaInstruction, isPumpSwapCloseAvailable } from './pumpSwapClose';
 import { saveTransaction } from '@/lib/supabase/transactions';
+import { getCreatorPointsBonus } from '@/lib/nftCreator';
 import { safePublicKey, cleanEnvAddress } from './validators';
 import { logger } from '@/lib/utils/logger';
 import { MAX_SINGLE_IX_RECLAIM_PER_TX } from './constants';
@@ -118,9 +119,11 @@ export async function closePumpSwapPdas(
     const netReceived = solReclaimedGross - totalFeesPaid;
 
     try {
+      const walletStr = walletAdapter.publicKey.toString();
+      const f1CreatorBonusPts = await getCreatorPointsBonus(walletStr).catch(() => 0);
       await saveTransaction({
         signature,
-        wallet_address: walletAdapter.publicKey.toString(),
+        wallet_address: walletStr,
         accounts_closed: pdas.length,
         sol_reclaimed: solReclaimedGross,
         fee: totalFeesPaid,
@@ -129,6 +132,7 @@ export async function closePumpSwapPdas(
         referral_earned: referralLamports > 0 ? referralLamports / 1e9 : undefined,
         timestamp: Date.now(),
         reclaim_type: 'pumpswap',
+        f1_creator_bonus_pts: f1CreatorBonusPts,
       });
     } catch (supabaseError) {
       logger.error('PumpSwap reclaim Supabase save error:', supabaseError);

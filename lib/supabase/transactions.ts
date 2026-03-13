@@ -17,6 +17,8 @@ export interface TransactionData {
   reclaim_type?: ReclaimType;
   /** Optional: chain (solana, base, etc.). Requires column `chain` in Supabase. Defaults to solana for existing code. */
   chain?: string;
+  /** Optional: F1 Creator bonus points for this reclaim (set when wallet held Creator NFT at tx time). Requires column `f1_creator_bonus_pts` in Supabase. */
+  f1_creator_bonus_pts?: number;
 }
 
 /**
@@ -47,12 +49,16 @@ export async function saveTransaction(data: TransactionData) {
     if (data.chain != null) {
       row.chain = data.chain;
     }
+    if (data.f1_creator_bonus_pts != null && Number.isInteger(data.f1_creator_bonus_pts)) {
+      row.f1_creator_bonus_pts = data.f1_creator_bonus_pts;
+    }
     let { error: txError } = await supabase
       .from('transactions')
       .insert([row]);
-    if (txError && (data.reclaim_type != null || data.chain != null)) {
+    if (txError && (data.reclaim_type != null || data.chain != null || data.f1_creator_bonus_pts != null)) {
       if (data.reclaim_type != null) delete row.reclaim_type;
       if (data.chain != null) delete row.chain;
+      if (data.f1_creator_bonus_pts != null) delete row.f1_creator_bonus_pts;
       const retry = await supabase.from('transactions').insert([row]);
       txError = retry.error;
     }
