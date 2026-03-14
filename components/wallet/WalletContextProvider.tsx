@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * LEGACY — Not used by the app. The root layout uses Providers from app/providers.tsx
+ * (RPC proxy, mainnet/devnet from env). Do not use this provider in production:
+ * it hardcodes Devnet and does not use the /api/rpc proxy. Kept for reference only.
+ */
+
 import React, { FC, useMemo } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';

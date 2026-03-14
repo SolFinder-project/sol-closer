@@ -83,12 +83,15 @@ export async function closeCnftAssets(
       const chunk = assets.slice(chunkStart, chunkStart + MAX_CNFT_BURNS_PER_TX);
       let builder: ReturnType<typeof burn> | null = null;
 
+      // Use connected wallet as leafOwner so the transaction signer (identity) matches the account
+      // expected by Bubblegum — fixes LeafAuthorityMustSign (0x1900) when DAS proof owner equals wallet.
+      const walletUmi = umiPublicKey(walletAdapter.publicKey.toString());
       for (const asset of chunk) {
         const assetId = umiPublicKey(asset.id);
         const assetWithProof = await getAssetWithProof(umi, assetId, { truncateCanopy: true });
         const burnIx = burn(umi, {
           ...assetWithProof,
-          leafOwner: assetWithProof.leafOwner,
+          leafOwner: walletUmi,
         });
         builder = builder == null ? burnIx : builder.add(burnIx);
       }

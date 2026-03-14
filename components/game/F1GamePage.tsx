@@ -515,7 +515,7 @@ export default function F1GamePage() {
             ) : (
               <>
                 <p className="text-sm text-gray-400 mb-2">
-                  This week&apos;s points: <strong className="text-white font-mono">{points ?? 0}</strong> pts
+                  This week&apos;s points: <strong className="text-white font-mono">{effectivePointsAvailable}</strong> pts
                   {myRegistration && (
                     <>
                       <span className="ml-2 text-amber-300"> · Registered in {myRegistration.leagueName}</span>
