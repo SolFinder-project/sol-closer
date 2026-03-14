@@ -83,14 +83,14 @@ export async function closeCnftAssets(
       const chunk = assets.slice(chunkStart, chunkStart + MAX_CNFT_BURNS_PER_TX);
       let builder: ReturnType<typeof burn> | null = null;
 
-      // Explicit authority signer so Bubblegum marks the leaf owner as signer (fixes LeafAuthorityMustSign 0x1900).
-      // leafOwner from getAssetWithProof is correct; authority must be the Signer that signs the tx.
+      // Pass leafOwner as Signer (umi.identity) so the SDK marks it as signer in the instruction (fixes LeafAuthorityMustSign 0x1900).
+      // burn v1 has no "authority" account; leafOwner/leafDelegate must be Signer for the program to see the signer.
       for (const asset of chunk) {
         const assetId = umiPublicKey(asset.id);
         const assetWithProof = await getAssetWithProof(umi, assetId, { truncateCanopy: true });
         const burnIx = burn(umi, {
           ...assetWithProof,
-          authority: umi.identity,
+          leafOwner: umi.identity,
         });
         builder = builder == null ? burnIx : builder.add(burnIx);
       }
