@@ -1,9 +1,20 @@
 /**
  * Burn compressed NFTs (cNFTs) via Metaplex Bubblegum, then charge fee + referral on reclaimed SOL.
  * Processes assets in chunks of MAX_CNFT_BURNS_PER_TX (1 recommended: proof size often makes multi-burn tx exceed 1232 bytes).
+ *
+ * V1 schema (most mainnet cNFTs): we build the burn instruction manually with web3.js so that
+ * leaf_owner is explicitly isSigner: true in the account metas. The SDK's burn() can lose the
+ * signer flag when the transaction is converted for the wallet (known Anchor/Umi limitation).
+ * See: metaplex-program-library#1129, Solana Stack Exchange #6410.
  */
 
-import { PublicKey } from '@solana/web3.js';
+import {
+  PublicKey,
+  Transaction,
+  TransactionInstruction,
+  ComputeBudgetProgram,
+  SystemProgram,
+} from '@solana/web3.js';
 import { publicKey as umiPublicKey } from '@metaplex-foundation/umi';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { walletAdapterIdentity } from '@metaplex-foundation/umi-signer-wallet-adapters';
@@ -12,9 +23,9 @@ import { none, some } from '@metaplex-foundation/umi';
 import {
   getAssetWithProof,
   getCompressionProgramsForV1Ixs,
-  burn,
   burnV2,
 } from '@metaplex-foundation/mpl-bubblegum';
+import { sendAndConfirmWithRetry } from './sendAndConfirmWithRetry';
 import { getRpcUrl } from './connection';
 import { getConnection } from './connection';
 import { saveTransaction } from '@/lib/supabase/transactions';
@@ -26,11 +37,103 @@ import type { DasAsset } from './das';
 import { MAX_CNFT_BURNS_PER_TX } from './constants';
 import type { ReclaimFeeOptions } from './closer';
 
+/** Bubblegum program ID (Metaplex). */
+const BUBBLEGUM_PROGRAM_ID = new PublicKey('BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY');
+
+/** Burn v1 instruction discriminator (from mpl-bubblegum). */
+const BURN_V1_DISCRIMINATOR = Buffer.from([116, 110, 29, 56, 107, 219, 42, 93]);
+
 /** Wallet adapter–like (publicKey + signTransaction) for Umi. */
 type WalletLike = {
   publicKey: PublicKey;
   signTransaction: (tx: unknown) => Promise<unknown>;
 };
+
+/** Convert Umi/public key to web3.js PublicKey. */
+function toWeb3Pubkey(k: string | Uint8Array | { bytes: Uint8Array } | PublicKey): PublicKey {
+  if (k instanceof PublicKey) return k;
+  if (typeof k === 'string') return new PublicKey(k);
+  if (k instanceof Uint8Array || (k && typeof k === 'object' && 'bytes' in k))
+    return new PublicKey('bytes' in k ? (k as { bytes: Uint8Array }).bytes : k);
+  return new PublicKey(k as string);
+}
+
+/**
+ * Build and send a burn v1 transaction with explicit leaf_owner isSigner: true.
+ * Avoids SDK path where the signer flag can be lost (LeafAuthorityMustSign 0x1900).
+ */
+async function sendBurnV1Chunk(
+  umi: Awaited<ReturnType<typeof createUmi>>,
+  connection: ReturnType<typeof getConnection>,
+  walletAdapter: WalletLike,
+  chunk: DasAsset[],
+  compressionPrograms: { logWrapper: unknown; compressionProgram: unknown }
+): Promise<string> {
+  const tx = new Transaction();
+  tx.add(
+    ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }),
+    ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100_000 })
+  );
+
+  for (const asset of chunk) {
+    const assetId = umiPublicKey(asset.id);
+    const assetWithProof = await getAssetWithProof(umi, assetId, { truncateCanopy: true });
+
+    const merkleTree = toWeb3Pubkey(assetWithProof.merkleTree);
+    const treeConfig = PublicKey.findProgramAddressSync(
+      [merkleTree.toBuffer()],
+      BUBBLEGUM_PROGRAM_ID
+    )[0];
+
+    const leafOwner = walletAdapter.publicKey;
+    const leafDelegate = toWeb3Pubkey(assetWithProof.leafDelegate);
+
+    const nonceBuf = Buffer.alloc(8);
+    nonceBuf.writeBigUInt64LE(BigInt(assetWithProof.nonce), 0);
+    const indexBuf = Buffer.alloc(4);
+    indexBuf.writeUInt32LE(assetWithProof.index, 0);
+    const data = Buffer.concat([
+      BURN_V1_DISCRIMINATOR,
+      Buffer.from(assetWithProof.root),
+      Buffer.from(assetWithProof.dataHash),
+      Buffer.from(assetWithProof.creatorHash),
+      nonceBuf,
+      indexBuf,
+    ]);
+
+    const keys = [
+      { pubkey: treeConfig, isSigner: false, isWritable: false },
+      { pubkey: leafOwner, isSigner: true, isWritable: false },
+      { pubkey: leafDelegate, isSigner: false, isWritable: false },
+      { pubkey: merkleTree, isSigner: false, isWritable: true },
+      { pubkey: toWeb3Pubkey(compressionPrograms.logWrapper), isSigner: false, isWritable: false },
+      { pubkey: toWeb3Pubkey(compressionPrograms.compressionProgram), isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      ...assetWithProof.proof.map((p) => ({
+        pubkey: toWeb3Pubkey(p),
+        isSigner: false as const,
+        isWritable: false as const,
+      })),
+    ];
+
+    tx.add(
+      new TransactionInstruction({
+        programId: BUBBLEGUM_PROGRAM_ID,
+        keys,
+        data,
+      })
+    );
+  }
+
+  const { blockhash } = await connection.getLatestBlockhash();
+  tx.recentBlockhash = blockhash;
+  tx.feePayer = walletAdapter.publicKey;
+  const signed = await walletAdapter.signTransaction(tx as Parameters<WalletLike['signTransaction']>[0]);
+  return sendAndConfirmWithRetry(
+    connection,
+    (signed as { serialize: () => Buffer }).serialize()
+  );
+}
 
 /**
  * Burn selected cNFTs (by asset id), then send fee + referral from reclaimed SOL.
@@ -92,36 +195,25 @@ export async function closeCnftAssets(
       const chunk = assets.slice(chunkStart, chunkStart + MAX_CNFT_BURNS_PER_TX);
       const firstId = chunk[0]?.id?.slice(0, 8) ?? '?';
 
-      const runChunk = async (useV1: boolean) => {
-        let builder: ReturnType<typeof burn> | ReturnType<typeof burnV2> | null = null;
+      const runChunkV2 = async () => {
+        let builder: ReturnType<typeof burnV2> | null = null;
         for (const asset of chunk) {
           const assetId = umiPublicKey(asset.id);
           const assetWithProof = await getAssetWithProof(umi, assetId, { truncateCanopy: true });
-          if (useV1) {
-            // Burn v1: for V1 schema cNFTs (most mainnet). leafOwner/leafDelegate as Signer so program sees authority.
-            const burnIx = burn(umi, {
-              ...assetWithProof,
-              leafOwner: umi.identity,
-              leafDelegate: umi.identity,
-            });
-            builder = builder == null ? burnIx : (builder as ReturnType<typeof burn>).add(burnIx);
-          } else {
-            // BurnV2: for V2 schema. Dedicated authority Signer fixes LeafAuthorityMustSign 0x1900.
-            const burnIx = burnV2(umi, {
-              ...assetWithProof,
-              authority: umi.identity,
-              leafOwner: assetWithProof.leafOwner,
-              leafDelegate: assetWithProof.leafDelegate,
-              logWrapper: compressionPrograms.logWrapper,
-              compressionProgram: compressionPrograms.compressionProgram,
-              assetDataHash: assetWithProof.asset_data_hash
-                ? some(assetWithProof.asset_data_hash)
-                : none(),
-              flags:
-                assetWithProof.flags !== undefined ? some(assetWithProof.flags) : none(),
-            });
-            builder = builder == null ? burnIx : (builder as ReturnType<typeof burnV2>).add(burnIx);
-          }
+          const burnIx = burnV2(umi, {
+            ...assetWithProof,
+            authority: umi.identity,
+            leafOwner: assetWithProof.leafOwner,
+            leafDelegate: assetWithProof.leafDelegate,
+            logWrapper: compressionPrograms.logWrapper,
+            compressionProgram: compressionPrograms.compressionProgram,
+            assetDataHash: assetWithProof.asset_data_hash
+              ? some(assetWithProof.asset_data_hash)
+              : none(),
+            flags:
+              assetWithProof.flags !== undefined ? some(assetWithProof.flags) : none(),
+          });
+          builder = builder == null ? burnIx : builder.add(burnIx);
         }
         return builder!.send(umi);
       };
@@ -129,12 +221,12 @@ export async function closeCnftAssets(
       try {
         let signature: string | undefined;
         try {
-          signature = await runChunk(false);
+          signature = await runChunkV2();
         } catch (v2Err) {
           const v2Msg = v2Err instanceof Error ? v2Err.message : String(v2Err);
-          // 0x1773 = UnsupportedSchemaVersion: tree/asset is V1, BurnV2 expects V2 → retry with burn v1.
+          // 0x1773 = UnsupportedSchemaVersion: tree/asset is V1, BurnV2 expects V2 → use manual burn v1 with explicit leaf_owner signer.
           if (v2Msg.includes('0x1773') || v2Msg.includes('UnsupportedSchemaVersion') || v2Msg.includes('6003')) {
-            signature = await runChunk(true);
+            signature = await sendBurnV1Chunk(umi, connection, walletAdapter, chunk, compressionPrograms);
           } else {
             throw v2Err;
           }
