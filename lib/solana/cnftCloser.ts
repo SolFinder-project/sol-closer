@@ -8,7 +8,12 @@ import { publicKey as umiPublicKey } from '@metaplex-foundation/umi';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { walletAdapterIdentity } from '@metaplex-foundation/umi-signer-wallet-adapters';
 import { dasApi } from '@metaplex-foundation/digital-asset-standard-api';
-import { getAssetWithProof, burn } from '@metaplex-foundation/mpl-bubblegum';
+import { none, some } from '@metaplex-foundation/umi';
+import {
+  getAssetWithProof,
+  getCompressionProgramsForV1Ixs,
+  burnV2,
+} from '@metaplex-foundation/mpl-bubblegum';
 import { getRpcUrl } from './connection';
 import { getConnection } from './connection';
 import { saveTransaction } from '@/lib/supabase/transactions';
@@ -79,18 +84,32 @@ export async function closeCnftAssets(
     const balanceBefore = await connection.getBalance(walletAdapter.publicKey);
     const allSignatures: string[] = [];
 
+    // Use cluster-appropriate compression programs (SPL on mainnet, MPL elsewhere) for burnV2.
+    const compressionPrograms = await getCompressionProgramsForV1Ixs(umi);
+
     for (let chunkStart = 0; chunkStart < assets.length; chunkStart += MAX_CNFT_BURNS_PER_TX) {
       const chunk = assets.slice(chunkStart, chunkStart + MAX_CNFT_BURNS_PER_TX);
-      let builder: ReturnType<typeof burn> | null = null;
+      let builder: ReturnType<typeof burnV2> | null = null;
 
-      // Pass leafOwner as Signer (umi.identity) so the SDK marks it as signer in the instruction (fixes LeafAuthorityMustSign 0x1900).
-      // burn v1 has no "authority" account; leafOwner/leafDelegate must be Signer for the program to see the signer.
+      // Use burnV2 with explicit authority: umi.identity (Signer). The program requires the leaf
+      // owner or delegate to sign (LeafAuthorityMustSign 0x1900); burnV2 has a dedicated authority
+      // account that must be a Signer, which is correctly collected and signed by the wallet.
+      // leafOwner/leafDelegate stay as PublicKeys from DAS; authority is the signer.
       for (const asset of chunk) {
         const assetId = umiPublicKey(asset.id);
         const assetWithProof = await getAssetWithProof(umi, assetId, { truncateCanopy: true });
-        const burnIx = burn(umi, {
+        const burnIx = burnV2(umi, {
           ...assetWithProof,
-          leafOwner: umi.identity,
+          authority: umi.identity,
+          leafOwner: assetWithProof.leafOwner,
+          leafDelegate: assetWithProof.leafDelegate,
+          logWrapper: compressionPrograms.logWrapper,
+          compressionProgram: compressionPrograms.compressionProgram,
+          assetDataHash: assetWithProof.asset_data_hash
+            ? some(assetWithProof.asset_data_hash)
+            : none(),
+          flags:
+            assetWithProof.flags !== undefined ? some(assetWithProof.flags) : none(),
         });
         builder = builder == null ? burnIx : builder.add(burnIx);
       }
