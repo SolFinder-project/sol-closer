@@ -12,6 +12,7 @@ import { none, some } from '@metaplex-foundation/umi';
 import {
   getAssetWithProof,
   getCompressionProgramsForV1Ixs,
+  burn,
   burnV2,
 } from '@metaplex-foundation/mpl-bubblegum';
 import { getRpcUrl } from './connection';
@@ -84,47 +85,63 @@ export async function closeCnftAssets(
     const balanceBefore = await connection.getBalance(walletAdapter.publicKey);
     const allSignatures: string[] = [];
 
-    // Use cluster-appropriate compression programs (SPL on mainnet, MPL elsewhere) for burnV2.
+    // Cluster-appropriate compression programs (SPL on mainnet, MPL elsewhere).
     const compressionPrograms = await getCompressionProgramsForV1Ixs(umi);
 
     for (let chunkStart = 0; chunkStart < assets.length; chunkStart += MAX_CNFT_BURNS_PER_TX) {
       const chunk = assets.slice(chunkStart, chunkStart + MAX_CNFT_BURNS_PER_TX);
-      let builder: ReturnType<typeof burnV2> | null = null;
+      const firstId = chunk[0]?.id?.slice(0, 8) ?? '?';
 
-      // Use burnV2 with explicit authority: umi.identity (Signer). The program requires the leaf
-      // owner or delegate to sign (LeafAuthorityMustSign 0x1900); burnV2 has a dedicated authority
-      // account that must be a Signer, which is correctly collected and signed by the wallet.
-      // leafOwner/leafDelegate stay as PublicKeys from DAS; authority is the signer.
-      for (const asset of chunk) {
-        const assetId = umiPublicKey(asset.id);
-        const assetWithProof = await getAssetWithProof(umi, assetId, { truncateCanopy: true });
-        const burnIx = burnV2(umi, {
-          ...assetWithProof,
-          authority: umi.identity,
-          leafOwner: assetWithProof.leafOwner,
-          leafDelegate: assetWithProof.leafDelegate,
-          logWrapper: compressionPrograms.logWrapper,
-          compressionProgram: compressionPrograms.compressionProgram,
-          assetDataHash: assetWithProof.asset_data_hash
-            ? some(assetWithProof.asset_data_hash)
-            : none(),
-          flags:
-            assetWithProof.flags !== undefined ? some(assetWithProof.flags) : none(),
-        });
-        builder = builder == null ? burnIx : builder.add(burnIx);
-      }
-
-      if (builder == null) continue;
-      try {
-        // Send only: no confirm wait (same as other closers via sendAndConfirmWithRetry).
-        // UI shows success as soon as tx is sent; avoids long delay and websocket errors.
-        const signature = await builder.send(umi);
-        if (signature) {
-          allSignatures.push(signature);
+      const runChunk = async (useV1: boolean) => {
+        let builder: ReturnType<typeof burn> | ReturnType<typeof burnV2> | null = null;
+        for (const asset of chunk) {
+          const assetId = umiPublicKey(asset.id);
+          const assetWithProof = await getAssetWithProof(umi, assetId, { truncateCanopy: true });
+          if (useV1) {
+            // Burn v1: for V1 schema cNFTs (most mainnet). leafOwner/leafDelegate as Signer so program sees authority.
+            const burnIx = burn(umi, {
+              ...assetWithProof,
+              leafOwner: umi.identity,
+              leafDelegate: umi.identity,
+            });
+            builder = builder == null ? burnIx : (builder as ReturnType<typeof burn>).add(burnIx);
+          } else {
+            // BurnV2: for V2 schema. Dedicated authority Signer fixes LeafAuthorityMustSign 0x1900.
+            const burnIx = burnV2(umi, {
+              ...assetWithProof,
+              authority: umi.identity,
+              leafOwner: assetWithProof.leafOwner,
+              leafDelegate: assetWithProof.leafDelegate,
+              logWrapper: compressionPrograms.logWrapper,
+              compressionProgram: compressionPrograms.compressionProgram,
+              assetDataHash: assetWithProof.asset_data_hash
+                ? some(assetWithProof.asset_data_hash)
+                : none(),
+              flags:
+                assetWithProof.flags !== undefined ? some(assetWithProof.flags) : none(),
+            });
+            builder = builder == null ? burnIx : (builder as ReturnType<typeof burnV2>).add(burnIx);
+          }
         }
+        return builder!.send(umi);
+      };
+
+      try {
+        let signature: string | undefined;
+        try {
+          signature = await runChunk(false);
+        } catch (v2Err) {
+          const v2Msg = v2Err instanceof Error ? v2Err.message : String(v2Err);
+          // 0x1773 = UnsupportedSchemaVersion: tree/asset is V1, BurnV2 expects V2 → retry with burn v1.
+          if (v2Msg.includes('0x1773') || v2Msg.includes('UnsupportedSchemaVersion') || v2Msg.includes('6003')) {
+            signature = await runChunk(true);
+          } else {
+            throw v2Err;
+          }
+        }
+        if (signature) allSignatures.push(signature);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        const firstId = chunk[0]?.id?.slice(0, 8) ?? '?';
         if ((msg.includes('block height exceeded') || msg.includes('has expired')) && msg.includes('Signature')) {
           const sigMatch = msg.match(/Signature\s+([1-9A-HJ-NP-Za-km-z]{87,88})/);
           if (sigMatch) {
