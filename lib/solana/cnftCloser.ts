@@ -40,9 +40,9 @@ import type { ReclaimFeeOptions } from './closer';
 /** Bubblegum program ID (Metaplex). */
 const BUBBLEGUM_PROGRAM_ID = new PublicKey('BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY');
 
-/** MPL Noop / Account Compression (used by some Bubblegum deployments when SPL causes InvalidProgramId 0xbc0). */
-const MPL_NOOP_PROGRAM_ID = new PublicKey('mnoopTCrg4p8ry25e4bcWA9XZjbNjMTfgYVGGEdRsf3');
-const MPL_ACCOUNT_COMPRESSION_PROGRAM_ID = new PublicKey('mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW');
+/** SPL Noop & Account Compression (Burn v1 in mpl-bubblegum burn.rs uses SplNoop only). */
+const SPL_NOOP_PROGRAM_ID = new PublicKey('noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV');
+const SPL_ACCOUNT_COMPRESSION_PROGRAM_ID = new PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK');
 
 /** Burn v1 instruction discriminator (from mpl-bubblegum). */
 const BURN_V1_DISCRIMINATOR = new Uint8Array([116, 110, 29, 56, 107, 219, 42, 93]);
@@ -246,21 +246,14 @@ export async function closeCnftAssets(
           signature = await runChunkV2();
         } catch (v2Err) {
           const v2Msg = v2Err instanceof Error ? v2Err.message : String(v2Err);
-          // 0x1773 = UnsupportedSchemaVersion: tree/asset is V1, BurnV2 expects V2 → use manual burn v1 with explicit leaf_owner signer.
+          // 0x1773 = UnsupportedSchemaVersion: tree/asset is V1, BurnV2 expects V2 → use manual burn v1.
+          // Per mpl-bubblegum/programs/bubblegum/.../burn.rs: Burn v1 has log_wrapper: Program<SplNoop>, so SPL only.
+          // Use SPL IDs explicitly so we don't depend on getGenesisHash (getCompressionProgramsForV1Ixs returns MPL when hash unknown).
           if (v2Msg.includes('0x1773') || v2Msg.includes('UnsupportedSchemaVersion') || v2Msg.includes('6003')) {
-            const mplPrograms = { logWrapper: MPL_NOOP_PROGRAM_ID, compressionProgram: MPL_ACCOUNT_COMPRESSION_PROGRAM_ID };
-            const tryBurnV1 = (progs: { logWrapper: unknown; compressionProgram: unknown }) =>
-              sendBurnV1Chunk(umi, connection, walletAdapter, chunk, progs);
-            try {
-              signature = await tryBurnV1(compressionPrograms);
-            } catch (v1Err) {
-              const v1Msg = v1Err instanceof Error ? v1Err.message : String(v1Err);
-              if (v1Msg.includes('0xbc0') || v1Msg.includes('InvalidProgramId') || v1Msg.includes('log_wrapper')) {
-                signature = await tryBurnV1(mplPrograms);
-              } else {
-                throw v1Err;
-              }
-            }
+            signature = await sendBurnV1Chunk(umi, connection, walletAdapter, chunk, {
+              logWrapper: SPL_NOOP_PROGRAM_ID,
+              compressionProgram: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+            });
           } else {
             throw v2Err;
           }
