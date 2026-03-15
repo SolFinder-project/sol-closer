@@ -41,7 +41,29 @@ import type { ReclaimFeeOptions } from './closer';
 const BUBBLEGUM_PROGRAM_ID = new PublicKey('BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY');
 
 /** Burn v1 instruction discriminator (from mpl-bubblegum). */
-const BURN_V1_DISCRIMINATOR = Buffer.from([116, 110, 29, 56, 107, 219, 42, 93]);
+const BURN_V1_DISCRIMINATOR = new Uint8Array([116, 110, 29, 56, 107, 219, 42, 93]);
+
+/** Write u64 and u32 LE without Node Buffer (browser-safe). */
+function writeU64LE(value: bigint): Uint8Array {
+  const buf = new ArrayBuffer(8);
+  new DataView(buf).setBigUint64(0, value, true);
+  return new Uint8Array(buf);
+}
+function writeU32LE(value: number): Uint8Array {
+  const buf = new ArrayBuffer(4);
+  new DataView(buf).setUint32(0, value, true);
+  return new Uint8Array(buf);
+}
+function concatU8(...arr: Uint8Array[]): Uint8Array {
+  const len = arr.reduce((s, a) => s + a.length, 0);
+  const out = new Uint8Array(len);
+  let off = 0;
+  for (const a of arr) {
+    out.set(a, off);
+    off += a.length;
+  }
+  return out;
+}
 
 /** Wallet adapter–like (publicKey + signTransaction) for Umi. */
 type WalletLike = {
@@ -88,18 +110,14 @@ async function sendBurnV1Chunk(
     const leafOwner = walletAdapter.publicKey;
     const leafDelegate = toWeb3Pubkey(assetWithProof.leafDelegate);
 
-    const nonceBuf = Buffer.alloc(8);
-    nonceBuf.writeBigUInt64LE(BigInt(assetWithProof.nonce), 0);
-    const indexBuf = Buffer.alloc(4);
-    indexBuf.writeUInt32LE(assetWithProof.index, 0);
-    const data = Buffer.concat([
+    const data = concatU8(
       BURN_V1_DISCRIMINATOR,
-      Buffer.from(assetWithProof.root),
-      Buffer.from(assetWithProof.dataHash),
-      Buffer.from(assetWithProof.creatorHash),
-      nonceBuf,
-      indexBuf,
-    ]);
+      new Uint8Array(assetWithProof.root),
+      new Uint8Array(assetWithProof.dataHash),
+      new Uint8Array(assetWithProof.creatorHash),
+      writeU64LE(BigInt(assetWithProof.nonce)),
+      writeU32LE(assetWithProof.index)
+    );
 
     const keys = [
       { pubkey: treeConfig, isSigner: false, isWritable: false },
