@@ -56,5 +56,8 @@ export const MAX_SINGLE_IX_RECLAIM_PER_TX = 12;
  * Use 1 per tx so serialization never overflows; multiple cNFTs are handled by multiple txs in closeCnftAssets.
  */
 export const MAX_CNFT_BURNS_PER_TX = 1;
+
+/** When true, cNFT burn is disabled and UI shows "Coming soon" (Bubblegum 0x1900 not resolved in prod). */
+export const CNFT_BURN_COMING_SOON = true;
 /** Max Metaplex Core burns per tx (1 account each). */
 export const MAX_CORE_BURN_PER_TX = 12;

@@ -17,7 +17,7 @@ import { useReclaimEstimate } from '@/hooks/useReclaimEstimate';
 import { useRugcheckSummaries } from '@/hooks/useRugcheckSummaries';
 import { getWalletHealthFromEmptyCount, formatPercentileLabel } from '@/lib/utils/walletHealth';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { MIN_SOL_NETWORK } from '@/lib/solana/constants';
+import { MIN_SOL_NETWORK, CNFT_BURN_COMING_SOON } from '@/lib/solana/constants';
 import { logger } from '@/lib/utils/logger';
 import PostReclaimSwap from '@/components/swap/PostReclaimSwap';
 import ReclaimToStake from '@/components/reclaim/ReclaimToStake';
@@ -478,7 +478,8 @@ export default function AccountScanner({ onNavigateToGame, onReclaimSuccess }: A
         setSelectedPumpSwapPdaPubkeys([]);
       }
       let cnftClosedCount = 0;
-      if (hasCnft) {
+      const cnftSkippedCount = hasCnft ? cnftToReclaim.length : 0;
+      if (hasCnft && !CNFT_BURN_COMING_SOON) {
         cnftClosedCount = cnftToReclaim.length;
         const cnftResult = await closeCnftAssets(
           cnftToReclaim,
@@ -494,11 +495,22 @@ export default function AccountScanner({ onNavigateToGame, onReclaimSuccess }: A
         setFullReclaimCnftAssets((prev) => prev.filter((a) => !selectedFullReclaimCnftIds.includes(a.id)));
         setSelectedFullReclaimCnftIds([]);
       }
-      const msg = hasSingleTxAccounts && hasCnft
-        ? `Full reclaim: recovered ${reclaimedSol.toFixed(6)} SOL (empty + dust + NFT + Pump + PumpSwap) and closed ${cnftClosedCount} cNFT(s) (wallet cleanup).`
-        : hasCnft
-          ? `Full reclaim: closed ${cnftClosedCount} cNFT(s) (wallet cleanup).`
-          : `Full reclaim: recovered ${reclaimedSol.toFixed(6)} SOL in one transaction (empty + dust + NFT + Pump + PumpSwap).`;
+      const cnftNote =
+        hasCnft && CNFT_BURN_COMING_SOON
+          ? ` cNFT close coming soon (${cnftSkippedCount} skipped).`
+          : hasCnft
+            ? ` and closed ${cnftClosedCount} cNFT(s) (wallet cleanup).`
+            : '';
+      const msg =
+        hasSingleTxAccounts && hasCnft && !CNFT_BURN_COMING_SOON
+          ? `Full reclaim: recovered ${reclaimedSol.toFixed(6)} SOL (empty + dust + NFT + Pump + PumpSwap) and closed ${cnftClosedCount} cNFT(s) (wallet cleanup).`
+          : hasSingleTxAccounts
+            ? `Full reclaim: recovered ${reclaimedSol.toFixed(6)} SOL in one transaction (empty + dust + NFT + Pump + PumpSwap).${cnftNote}`
+            : hasCnft && CNFT_BURN_COMING_SOON
+              ? `cNFT close coming soon (${cnftSkippedCount} cNFT(s) skipped).`
+              : hasCnft
+                ? `Full reclaim: closed ${cnftClosedCount} cNFT(s) (wallet cleanup).`
+                : `Full reclaim: recovered ${reclaimedSol.toFixed(6)} SOL in one transaction (empty + dust + NFT + Pump + PumpSwap).`;
       setSuccess(msg);
       setLastSuccessType('full_reclaim');
       setLastReclaimedSol(reclaimedSol);
@@ -1158,7 +1170,12 @@ export default function AccountScanner({ onNavigateToGame, onReclaimSuccess }: A
                   )}
                   {fullReclaimCnftAssets.length > 0 && (
                     <p className="text-sm text-gray-300">
-                      cNFT: <strong className="text-white">{cnftSelected.length}</strong> of {fullReclaimCnftAssets.length} included → <span className="text-amber-400">wallet cleanup (0 SOL)</span>
+                      cNFT: <strong className="text-white">{cnftSelected.length}</strong> of {fullReclaimCnftAssets.length} included
+                      {CNFT_BURN_COMING_SOON ? (
+                        <span className="text-amber-400/80"> → <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">Coming soon</span> (skipped)</span>
+                      ) : (
+                        <span> → <span className="text-amber-400">wallet cleanup (0 SOL)</span></span>
+                      )}
                     </p>
                   )}
                   {hasCustomizable && (

@@ -34,7 +34,7 @@ import { cleanEnvAddress, safePublicKey } from './validators';
 import { logger } from '@/lib/utils/logger';
 import type { CloseAccountResult } from '@/types/token-account';
 import type { DasAsset } from './das';
-import { MAX_CNFT_BURNS_PER_TX } from './constants';
+import { MAX_CNFT_BURNS_PER_TX, CNFT_BURN_COMING_SOON } from './constants';
 import type { ReclaimFeeOptions } from './closer';
 
 /** Bubblegum program ID (Metaplex). */
@@ -168,6 +168,15 @@ export async function closeCnftAssets(
   options?: ReclaimFeeOptions
 ): Promise<CloseAccountResult> {
   try {
+    if (CNFT_BURN_COMING_SOON) {
+      return {
+        signature: '',
+        accountsClosed: 0,
+        solReclaimed: 0,
+        success: false,
+        error: 'cNFT burn is temporarily unavailable (coming soon).',
+      };
+    }
     if (!walletAdapter.publicKey) {
       throw new Error('Wallet not connected');
     }

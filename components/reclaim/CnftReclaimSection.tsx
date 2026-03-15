@@ -7,7 +7,7 @@ import { getCompressedNftsByOwner } from '@/lib/solana/das';
 import { closeCnftAssets } from '@/lib/solana/cnftCloser';
 import type { DasAsset } from '@/lib/solana/das';
 import { useReferral } from '@/hooks/useReferral';
-import { MIN_SOL_NETWORK } from '@/lib/solana/constants';
+import { MIN_SOL_NETWORK, CNFT_BURN_COMING_SOON } from '@/lib/solana/constants';
 
 type Props = {
   wallet: PublicKey | null;
@@ -133,11 +133,20 @@ export default function CnftReclaimSection({ wallet, walletBalanceSol = 0, onSuc
     <div className="card-cyber border-amber-500/30 bg-amber-500/5 p-4 md:p-5 flex flex-col h-full text-center items-center">
       <div className="flex-1 w-full">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">cNFTs</p>
-        <h3 className="text-base md:text-lg font-bold font-[family-name:var(--font-orbitron)] text-amber-400/90 mb-2">
+        <h3 className="text-base md:text-lg font-bold font-[family-name:var(--font-orbitron)] text-amber-400/90 mb-2 flex items-center justify-center gap-2">
           Close cNFTs (wallet cleanup)
+          {CNFT_BURN_COMING_SOON && (
+            <span className="text-xs font-normal px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+              Coming soon
+            </span>
+          )}
         </h3>
         <p className="text-xs text-gray-400 mb-2">
-          Burn cNFTs to remove them from your wallet. cNFTs use a shared tree (no per-item accounts), so <strong>0 SOL is always recovered</strong>. Use &quot;Burn NFT&quot; for classic SPL NFTs to reclaim ~0.002 SOL each.
+          {CNFT_BURN_COMING_SOON ? (
+            'cNFT burn will be available soon. You can still scan to see your cNFTs; closing is temporarily disabled.'
+          ) : (
+            <>Burn cNFTs to remove them from your wallet. cNFTs use a shared tree (no per-item accounts), so <strong>0 SOL is always recovered</strong>. Use &quot;Burn NFT&quot; for classic SPL NFTs to reclaim ~0.002 SOL each.</>
+          )}
         </p>
       </div>
       <div className="w-full space-y-2 flex flex-col items-center">
@@ -187,11 +196,17 @@ export default function CnftReclaimSection({ wallet, walletBalanceSol = 0, onSuc
             </div>
             <button
               type="button"
-              onClick={handleClose}
-              disabled={closing || selected.length === 0 || needsMoreSol}
+              onClick={CNFT_BURN_COMING_SOON ? undefined : handleClose}
+              disabled={CNFT_BURN_COMING_SOON || closing || selected.length === 0 || needsMoreSol}
               className="w-full px-5 py-2.5 rounded-xl font-semibold border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 disabled:opacity-50 text-sm"
             >
-              {closing ? 'Closing...' : needsMoreSol ? `Need ${MIN_SOL_NETWORK} SOL` : `Close ${selected.length} cNFT(s)`}
+              {CNFT_BURN_COMING_SOON
+                ? 'Coming soon'
+                : closing
+                  ? 'Closing...'
+                  : needsMoreSol
+                    ? `Need ${MIN_SOL_NETWORK} SOL`
+                    : `Close ${selected.length} cNFT(s)`}
             </button>
           </>
         )}
