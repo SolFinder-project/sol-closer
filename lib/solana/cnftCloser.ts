@@ -249,14 +249,14 @@ export async function closeCnftAssets(
           // 0x1773 = UnsupportedSchemaVersion: tree/asset is V1, BurnV2 expects V2 → use manual burn v1 with explicit leaf_owner signer.
           if (v2Msg.includes('0x1773') || v2Msg.includes('UnsupportedSchemaVersion') || v2Msg.includes('6003')) {
             const mplPrograms = { logWrapper: MPL_NOOP_PROGRAM_ID, compressionProgram: MPL_ACCOUNT_COMPRESSION_PROGRAM_ID };
+            const tryBurnV1 = (progs: { logWrapper: unknown; compressionProgram: unknown }) =>
+              sendBurnV1Chunk(umi, connection, walletAdapter, chunk, progs);
             try {
-              // Try MPL first: mainnet Bubblegum often expects mnoop/mcmt (Left in 0xbc0 error), not SPL noop.
-              signature = await sendBurnV1Chunk(umi, connection, walletAdapter, chunk, mplPrograms);
+              signature = await tryBurnV1(compressionPrograms);
             } catch (v1Err) {
               const v1Msg = v1Err instanceof Error ? v1Err.message : String(v1Err);
-              // If MPL fails with InvalidProgramId, try SPL (e.g. some trees use SPL noop).
               if (v1Msg.includes('0xbc0') || v1Msg.includes('InvalidProgramId') || v1Msg.includes('log_wrapper')) {
-                signature = await sendBurnV1Chunk(umi, connection, walletAdapter, chunk, compressionPrograms);
+                signature = await tryBurnV1(mplPrograms);
               } else {
                 throw v1Err;
               }
