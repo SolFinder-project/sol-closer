@@ -200,6 +200,9 @@ export default function MyCreationsList() {
         ...prev,
         [mintAddress]: { expectedCollectionMint: prev[mintAddress]?.expectedCollectionMint ?? null, inExpectedCollection: collectionDone },
       }));
+      if (collectionDone) {
+        fetchedCollectionMints.current.add(mintAddress);
+      }
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Finalize failed');
