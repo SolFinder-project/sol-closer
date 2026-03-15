@@ -155,8 +155,6 @@ export function getCurrentWeekBounds(): { startMs: number; endMs: number } {
   const now = Date.now();
   const d = new Date(now);
   const day = d.getUTCDay();
-  const hour = d.getUTCHours() + d.getUTCMinutes() / 60 + d.getUTCSeconds() / 3600;
-  // This Sunday 00:00 UTC
   const thisSunday00 = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day, 0, 0, 0, 0));
   const thisSunday17Ms = thisSunday00.getTime() + 17 * 3600000;
   const weekStartMs = now >= thisSunday17Ms ? thisSunday17Ms : thisSunday17Ms - 7 * 86400000;
@@ -293,8 +291,9 @@ export async function ensureOpenEventsForCurrentWeek(): Promise<void> {
 }
 
 /**
- * Open events for the current game week only. One per league (dedupe by league_id, prefer latest week_start).
- * Used for registration, points bounds, and "current week" UI. After rotation, only these are shown for leagues.
+ * Open events for the current game week only. One per league (dedupe by league_id, prefer earliest week_start).
+ * Preferring the earliest week ensures "Complete registration" and UI always use the event that will become
+ * "Last race" when the week closes—avoiding sign-up to a "next week" event and missing the current week's leaderboard.
  * @param sb Optional client (e.g. service role); when provided, used for the query (avoids RLS blocking admin flows).
  */
 export async function getOpenEventsForCurrentWeek(sb?: SupabaseClient | null): Promise<(WeeklyEvent & { league: League })[]> {
@@ -333,7 +332,8 @@ export async function getOpenEventsForCurrentWeek(sb?: SupabaseClient | null): P
   const byLeague = new Map<string, (WeeklyEvent & { league: League })>();
   for (const e of mapped.sort((a, b) => a.league.sort_order - b.league.sort_order)) {
     const existing = byLeague.get(e.league_id);
-    if (!existing || e.week_start >= existing.week_start) byLeague.set(e.league_id, e);
+    // Prefer earliest week_start so registration targets the current week (the one that becomes "Last race"), not a later one.
+    if (!existing || e.week_start < existing.week_start) byLeague.set(e.league_id, e);
   }
   return Array.from(byLeague.values()).sort((a, b) => a.league.sort_order - b.league.sort_order);
 }

@@ -72,6 +72,9 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Positions 1..N: top 3 from results table, then remaining by lap time. Use results.length + 1 + i
+  // so that when results is empty (e.g. close failed to write), the only participant gets #1, not #4.
+  const firstRemainingPosition = results.length + 1;
   const leaderboard = [
     ...results.map((r) => ({
       position: r.position,
@@ -80,7 +83,7 @@ export async function GET(request: NextRequest) {
       isYou: withIsYou(r.wallet_address),
     })),
     ...remainingWithTimes.map((r, i) => ({
-      position: 4 + i,
+      position: firstRemainingPosition + i,
       wallet: maskWallet(r.wallet_address),
       lapTimeMs: r.lap_time_ms,
       isYou: withIsYou(r.wallet_address),
