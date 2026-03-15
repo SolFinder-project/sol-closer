@@ -40,6 +40,10 @@ import type { ReclaimFeeOptions } from './closer';
 /** Bubblegum program ID (Metaplex). */
 const BUBBLEGUM_PROGRAM_ID = new PublicKey('BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY');
 
+/** MPL Noop / Account Compression (used by some Bubblegum deployments when SPL causes InvalidProgramId 0xbc0). */
+const MPL_NOOP_PROGRAM_ID = new PublicKey('mnoopTCrg4p8ry25e4bcWA9XZjbNjMTfgYVGGEdRsf3');
+const MPL_ACCOUNT_COMPRESSION_PROGRAM_ID = new PublicKey('mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW');
+
 /** Burn v1 instruction discriminator (from mpl-bubblegum). */
 const BURN_V1_DISCRIMINATOR = new Uint8Array([116, 110, 29, 56, 107, 219, 42, 93]);
 
@@ -244,7 +248,20 @@ export async function closeCnftAssets(
           const v2Msg = v2Err instanceof Error ? v2Err.message : String(v2Err);
           // 0x1773 = UnsupportedSchemaVersion: tree/asset is V1, BurnV2 expects V2 → use manual burn v1 with explicit leaf_owner signer.
           if (v2Msg.includes('0x1773') || v2Msg.includes('UnsupportedSchemaVersion') || v2Msg.includes('6003')) {
-            signature = await sendBurnV1Chunk(umi, connection, walletAdapter, chunk, compressionPrograms);
+            try {
+              signature = await sendBurnV1Chunk(umi, connection, walletAdapter, chunk, compressionPrograms);
+            } catch (v1Err) {
+              const v1Msg = v1Err instanceof Error ? v1Err.message : String(v1Err);
+              // 0xbc0 = InvalidProgramId on log_wrapper: some deployments expect MPL Noop/Compression instead of SPL.
+              if (v1Msg.includes('0xbc0') || v1Msg.includes('InvalidProgramId') || v1Msg.includes('log_wrapper')) {
+                signature = await sendBurnV1Chunk(umi, connection, walletAdapter, chunk, {
+                  logWrapper: MPL_NOOP_PROGRAM_ID,
+                  compressionProgram: MPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+                });
+              } else {
+                throw v1Err;
+              }
+            }
           } else {
             throw v2Err;
           }
