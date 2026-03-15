@@ -15,6 +15,7 @@ import StatsCard from '@/components/ui/StatsCard';
 import LiveFeed from '@/components/ui/LiveFeed';
 import { getGlobalStats } from '@/lib/supabase/transactions';
 import { isValidSolanaAddress } from '@/lib/solana/validators';
+import { CNFT_BURN_COMING_SOON } from '@/lib/solana/constants';
 
 type Section = 'home' | 'scanner' | 'dashboard' | 'history' | 'referral' | 'achievements' | 'leaderboard' | 'game' | 'nftCreator';
 
@@ -242,7 +243,7 @@ function HomeContent({ setSection, globalStats, liveFeedRefreshTrigger = 0 }: { 
           Reclaim SOL from more sources. Then keep, stake, swap, play or create.
         </h1>
         <p className="text-sm md:text-base text-gray-400 max-w-2xl mx-auto mb-6 leading-relaxed">
-          Empty token accounts, dust, <strong className="text-rose-400/90">Burn NFT</strong>, Pump.fun PDAs, PumpSwap PDAs, Drift accounts, and <strong className="text-amber-400/90">cNFT close</strong> — reclaim in one app. Full reclaim in one transaction. Keep your SOL, or stake with <strong className="text-amber-400/90">PSOL</strong> (Phantom) or <strong className="text-neon-green/90">Marinade</strong>, or swap with <strong className="text-neon-cyan/90">Jupiter</strong> in one click. Compete in the <strong className="text-red-400/90">weekly F1 race</strong>; create <strong className="text-amber-400/90">F1-themed NFTs</strong> from eligible reclaims.
+          Empty token accounts, dust, <strong className="text-rose-400/90">Burn NFT</strong>, Pump.fun PDAs, PumpSwap PDAs, Drift accounts, and <strong className="text-amber-400/90">cNFT close</strong>{CNFT_BURN_COMING_SOON && <span className="text-xs font-normal ml-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 align-middle">Coming soon</span>} — reclaim in one app. Full reclaim in one transaction. Keep your SOL, or stake with <strong className="text-amber-400/90">PSOL</strong> (Phantom) or <strong className="text-neon-green/90">Marinade</strong>, or swap with <strong className="text-neon-cyan/90">Jupiter</strong> in one click. Compete in the <strong className="text-red-400/90">weekly F1 race</strong>; create <strong className="text-amber-400/90">F1-themed NFTs</strong> from eligible reclaims.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 max-w-3xl mx-auto">
           <button
@@ -310,7 +311,10 @@ function HomeContent({ setSection, globalStats, liveFeedRefreshTrigger = 0 }: { 
               <p className="text-xs text-gray-400 break-words">~0.035 SOL · withdraw first</p>
             </div>
             <div className="card-cyber border-amber-500/30 bg-dark-card/80 text-center py-5 px-4 min-w-[240px] md:min-w-[260px] shrink-0 snap-start overflow-visible">
-              <p className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-amber-400 mb-1 break-words">cNFT <span className="whitespace-nowrap">close</span></p>
+              <p className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-amber-400 mb-1 break-words flex flex-col items-center gap-1">
+                <span>cNFT <span className="whitespace-nowrap">close</span></span>
+                {CNFT_BURN_COMING_SOON && <span className="text-xs font-normal px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">Coming soon</span>}
+              </p>
               <p className="text-xs text-gray-400 break-words">Burn compressed NFTs · reclaim rent</p>
             </div>
           </div>
@@ -434,7 +438,7 @@ function HomeContent({ setSection, globalStats, liveFeedRefreshTrigger = 0 }: { 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-10 md:mb-12">
         <button onClick={() => setSection('scanner')} className="card-cyber text-left group hover:border-neon-purple/40 transition-colors p-4 md:p-5">
           <span className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-neon-purple block mb-1.5">Scan & reclaim</span>
-          <p className="text-xs md:text-sm text-gray-400 line-clamp-2">Find empty accounts, dust, Burn NFT, Pump PDA, PumpSwap PDA, Drift, cNFT close. One flow.</p>
+          <p className="text-xs md:text-sm text-gray-400 line-clamp-2">Find empty accounts, dust, Burn NFT, Pump PDA, PumpSwap PDA, Drift, cNFT close{CNFT_BURN_COMING_SOON ? ' (coming soon)' : ''}. One flow.</p>
         </button>
         <button onClick={() => setSection('referral')} className="card-cyber text-left group hover:border-neon-pink/40 transition-colors p-4 md:p-5">
           <span className="text-lg md:text-xl font-bold font-[family-name:var(--font-orbitron)] text-neon-pink block mb-1.5">Refer & earn</span>
@@ -491,7 +495,7 @@ function HomeContent({ setSection, globalStats, liveFeedRefreshTrigger = 0 }: { 
           </li>
           <li className="flex gap-3">
             <span className="text-blue-400 shrink-0">·</span>
-            <span>Rent per SPL account ~0.00204 SOL. Burn NFT ~0.002 SOL each. Pump/PumpSwap PDA ~0.0018 SOL each. cNFT close: burn compressed NFTs to reclaim rent.</span>
+            <span>Rent per SPL account ~0.00204 SOL. Burn NFT ~0.002 SOL each. Pump/PumpSwap PDA ~0.0018 SOL each. cNFT close: burn compressed NFTs to reclaim rent{CNFT_BURN_COMING_SOON ? ' (coming soon)' : ''}.</span>
           </li>
           <li className="flex gap-3">
             <span className="text-blue-400 shrink-0">·</span>
@@ -507,7 +511,7 @@ function HomeContent({ setSection, globalStats, liveFeedRefreshTrigger = 0 }: { 
             <div className="col-span-2 md:col-span-1">
               <h3 className="text-base font-bold mb-3 text-neon-purple">About SolPit</h3>
               <p className="text-xs md:text-sm text-gray-400">
-                Reclaim SOL from empty accounts, dust, Burn NFT, Pump.fun PDAs, PumpSwap PDAs, Drift, and cNFT close. Weekly F1 race (earn points, best lap wins). SolPit NFT Creator: mint F1-themed NFTs from eligible reclaims. Stake with PSOL or Marinade, or swap with Jupiter in-app.
+                Reclaim SOL from empty accounts, dust, Burn NFT, Pump.fun PDAs, PumpSwap PDAs, Drift, and cNFT close{CNFT_BURN_COMING_SOON ? ' (coming soon)' : ''}. Weekly F1 race (earn points, best lap wins). SolPit NFT Creator: mint F1-themed NFTs from eligible reclaims. Stake with PSOL or Marinade, or swap with Jupiter in-app.
               </p>
             </div>
 

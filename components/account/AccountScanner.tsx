@@ -1133,6 +1133,7 @@ export default function AccountScanner({ onNavigateToGame, onReclaimSuccess }: A
             const totalAccountsCount = emptySelected.length + dustSelected.length + nftSelected.length + pumpSelected.length + pumpSwapSelected.length;
             const totalWithCnft = totalAccountsCount + cnftSelected.length;
             const hasSelection = totalWithCnft > 0;
+            const reclaimCount = CNFT_BURN_COMING_SOON ? totalAccountsCount : totalWithCnft;
             const hasCustomizable = dustAccounts.length > 0 || fullReclaimNftAccounts.length > 0 || pumpPdas.length > 0 || pumpSwapPdas.length > 0 || fullReclaimCnftAssets.length > 0;
             return (
               <>
@@ -1344,7 +1345,7 @@ export default function AccountScanner({ onNavigateToGame, onReclaimSuccess }: A
                   disabled={!hasSelection || isFullReclaiming || needsMoreSOL}
                   className="w-full px-6 py-3 rounded-xl font-semibold border border-neon-cyan/50 text-neon-cyan hover:bg-neon-cyan/10 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isFullReclaiming ? '⏳ Reclaiming...' : needsMoreSOL ? `⚠️ Need ${MIN_SOL_NETWORK} SOL` : `✨ Reclaim all (${totalWithCnft} accounts)`}
+                  {isFullReclaiming ? '⏳ Reclaiming...' : needsMoreSOL ? `⚠️ Need ${MIN_SOL_NETWORK} SOL` : `✨ Reclaim all (${reclaimCount} accounts)`}
                 </button>
               </>
             );
