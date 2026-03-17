@@ -173,9 +173,9 @@ export default function F1GamePage() {
     setError('');
     try {
       const [pointsRes, eventsRes, regRes] = await Promise.all([
-        fetch(`/api/game/points?wallet=${encodeURIComponent(walletStr)}`),
-        fetch('/api/game/events'),
-        fetch(`/api/game/registration?wallet=${encodeURIComponent(walletStr)}`),
+        fetch(`/api/game/points?wallet=${encodeURIComponent(walletStr)}`, { cache: 'no-store' }),
+        fetch('/api/game/events', { cache: 'no-store' }),
+        fetch(`/api/game/registration?wallet=${encodeURIComponent(walletStr)}`, { cache: 'no-store' }),
       ]);
       if (pointsRes.ok) {
         const d = await pointsRes.json();
@@ -248,7 +248,7 @@ export default function F1GamePage() {
     const url = walletStr
       ? `/api/game/leaderboard?eventId=${encodeURIComponent(selectedLeaderboardEventId)}&wallet=${encodeURIComponent(walletStr)}`
       : `/api/game/leaderboard?eventId=${encodeURIComponent(selectedLeaderboardEventId)}`;
-    fetch(url)
+    fetch(url, { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => {
         setLeaderboard(d.leaderboard ?? []);
@@ -271,7 +271,7 @@ export default function F1GamePage() {
     (async () => {
       const results = await Promise.all(
         lastClosedEvents.map((ev) =>
-          fetch(`/api/game/leaderboard?eventId=${encodeURIComponent(ev.id)}&wallet=${encodeURIComponent(walletStr)}`).then((r) => r.json())
+          fetch(`/api/game/leaderboard?eventId=${encodeURIComponent(ev.id)}&wallet=${encodeURIComponent(walletStr)}`, { cache: 'no-store' }).then((r) => r.json())
         )
       );
       if (cancelled) return;

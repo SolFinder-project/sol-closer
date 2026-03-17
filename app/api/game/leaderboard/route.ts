@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
   const isEventClosed = event.status === 'closed';
 
   if (!isEventClosed) {
-    return NextResponse.json({
+    const res = NextResponse.json({
       eventId,
       leagueName: event.league.name,
       entryFeeSol,
@@ -45,6 +45,8 @@ export async function GET(request: NextRequest) {
       isEventClosed: false,
       leaderboard: [],
     });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return res;
   }
 
   const results = await getResultsByEvent(eventId);
@@ -90,7 +92,7 @@ export async function GET(request: NextRequest) {
     })),
   ];
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     eventId,
     leagueName: event.league.name,
     entryFeeSol,
@@ -100,6 +102,8 @@ export async function GET(request: NextRequest) {
     leaderboard,
     playerWarnings,
   });
+  res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  return res;
 }
 
 function maskWallet(wallet: string): string {

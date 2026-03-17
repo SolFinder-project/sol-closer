@@ -428,14 +428,8 @@ export async function getMostRecentClosedEvents(): Promise<(WeeklyEvent & { leag
   return Array.from(byLeague.values()).sort((a, b) => a.league.sort_order - b.league.sort_order);
 }
 
-/** Get a single event by id (with league). */
-export async function getEventById(eventId: string): Promise<(WeeklyEvent & { league: League }) | null> {
-  const { data: e, error } = await supabase
-    .from('weekly_events')
-    .select('*, leagues(*)')
-    .eq('id', eventId)
-    .single();
-  if (error || !e) return null;
+/** Map a raw DB row to WeeklyEvent & { league }. */
+function mapRowToEvent(e: Record<string, unknown>): WeeklyEvent & { league: League } {
   const league = (e.leagues as Record<string, unknown> | null) ?? {};
   return {
     id: String(e.id),
@@ -453,6 +447,21 @@ export async function getEventById(eventId: string): Promise<(WeeklyEvent & { le
       created_at: String(league.created_at),
     } as League,
   };
+}
+
+/** Get a single event by id (with league). Uses optional client when provided (e.g. service_role for admin flows). */
+export async function getEventById(
+  eventId: string,
+  sb?: SupabaseClient | null
+): Promise<(WeeklyEvent & { league: League }) | null> {
+  const db = sb ?? supabase;
+  const { data: e, error } = await db
+    .from('weekly_events')
+    .select('*, leagues(*)')
+    .eq('id', eventId)
+    .single();
+  if (error || !e) return null;
+  return mapRowToEvent(e as Record<string, unknown>);
 }
 
 export async function getRegistration(
@@ -689,33 +698,46 @@ export async function closeEventAndWriteResults(
   eventId: string,
   adminClient?: SupabaseClient | null,
   rpcOptions?: GameRpcOptions
-): Promise<{ ok: boolean; error?: string }> {
-  const event = await getEventById(eventId);
+): Promise<{ ok: boolean; error?: string; closedIds?: string[] }> {
+  const db = adminClient ?? supabase;
+  const event = await getEventById(eventId, db);
   if (!event) return { ok: false, error: 'Event not found' };
   if (event.status === 'closed') return { ok: false, error: 'Event already closed' };
 
-  const db = adminClient ?? supabase;
-  const { data: sameWeek, error: fetchErr } = await db
+  // Fetch ALL open events with the same week (compare by timestamp to avoid format/precision mismatches).
+  const { data: allOpen, error: fetchErr } = await db
     .from('weekly_events')
-    .select('id')
-    .eq('week_start', event.week_start)
+    .select('id, week_start')
     .eq('status', 'open');
-  if (fetchErr || !sameWeek?.length) {
+  if (fetchErr) {
     const result = await closeOneEventAndWriteResults(event, adminClient, rpcOptions);
-    return result;
+    return result.ok ? { ok: true, closedIds: [event.id] } : result;
+  }
+  const eventWeekStartMs = new Date(event.week_start).getTime();
+  const sameWeekIds = (allOpen ?? []).filter(
+    (r) => new Date((r as { week_start: string }).week_start).getTime() === eventWeekStartMs
+  ).map((r) => (r as { id: string }).id);
+  if (sameWeekIds.length === 0) {
+    const result = await closeOneEventAndWriteResults(event, adminClient, rpcOptions);
+    return result.ok ? { ok: true, closedIds: [event.id] } : result;
   }
 
-  const toClose = await Promise.all(
-    sameWeek.map((r) => getEventById(r.id as string))
-  );
-  const eventsToClose = toClose.filter((e): e is WeeklyEvent & { league: League } => e != null);
+  // Fetch full event rows with leagues using the same client (admin when rotating).
+  const { data: fullRows, error: fullErr } = await db
+    .from('weekly_events')
+    .select('*, leagues(*)')
+    .in('id', sameWeekIds);
+  if (fullErr || !fullRows?.length) {
+    const result = await closeOneEventAndWriteResults(event, adminClient, rpcOptions);
+    return result.ok ? { ok: true, closedIds: [event.id] } : result;
+  }
+  const eventsToClose = fullRows.map((e) => mapRowToEvent(e as Record<string, unknown>));
 
   for (const ev of eventsToClose) {
-    if (!ev) continue;
     const result = await closeOneEventAndWriteResults(ev, adminClient, rpcOptions);
     if (!result.ok) return result;
   }
-  return { ok: true };
+  return { ok: true, closedIds: eventsToClose.map((e) => e.id) };
 }
 
 /**
@@ -787,7 +809,8 @@ export async function closeCurrentWeekAndStartNext(
     lastClosedWeekEndIso = open[0].week_end;
     const result = await closeEventAndWriteResults(open[0].id, adminClient, rpcOptions);
     if (!result.ok) return { ok: false, error: `Close ${open[0].id}: ${result.error}` };
-    closed.push(open[0].id);
+    if (result.closedIds?.length) closed.push(...result.closedIds);
+    else closed.push(open[0].id);
     open = await getOpenEventsForCurrentWeek(adminClient);
   }
 

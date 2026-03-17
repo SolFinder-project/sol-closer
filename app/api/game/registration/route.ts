@@ -45,20 +45,24 @@ export async function GET(request: NextRequest) {
         };
       })
     );
-    return NextResponse.json({ points, periodStart: startMs, periodEnd: endMs, registrations });
+    const res = NextResponse.json({ points, periodStart: startMs, periodEnd: endMs, registrations });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return res;
   }
 
   const registration = await getRegistration(eventId, wallet);
   if (!registration) {
-    return NextResponse.json({
+    const res = NextResponse.json({
       points,
       periodStart: startMs,
       periodEnd: endMs,
       registration: null,
     });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return res;
   }
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     points,
     periodStart: startMs,
     periodEnd: endMs,
@@ -69,6 +73,8 @@ export async function GET(request: NextRequest) {
       // lapTimeMs not exposed before race closes
     },
   });
+  res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  return res;
 }
 
 /**

@@ -26,13 +26,15 @@ export async function GET(request: NextRequest) {
     ]);
     const points = pointsBase + pointsBonus;
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       points,
       pointsBase,
       pointsBonus,
       periodStart: startMs,
       periodEnd: endMs,
     });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return res;
   } catch (error) {
     console.error('[game/points] error:', error);
     return NextResponse.json({ error: 'Failed to compute points' }, { status: 500 });

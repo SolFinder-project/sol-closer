@@ -50,7 +50,7 @@ export async function GET() {
         prizePoolSol,
       };
     };
-    return NextResponse.json({
+    const res = NextResponse.json({
       events: events.map((e, i) => mapEvent(e, i)),
       lastClosedEvents: lastClosedEvents.map((e, i) => ({
         id: e.id,
@@ -62,6 +62,8 @@ export async function GET() {
         status: e.status,
       })),
     });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return res;
   } catch (error) {
     console.error('[game/events] error:', error);
     return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 });
