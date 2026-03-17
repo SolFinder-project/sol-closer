@@ -46,7 +46,7 @@ export function getConnection(): Connection {
 /**
  * Use in API routes that are called from the browser. Returns a Connection that uses the app's
  * /api/rpc proxy with the client's Origin/Referer, so Helius "Allowed Domains" accepts the request.
- * Fallback: when Origin/Referer are missing, derives baseUrl from request.url so proxy still works (e.g. recovery form).
+ * Fallback: when Origin/Referer are missing, derives baseUrl from request.url so proxy still works.
  */
 export function getConnectionForRequest(request: Request): Connection {
   const origin = request.headers.get('origin')?.trim();

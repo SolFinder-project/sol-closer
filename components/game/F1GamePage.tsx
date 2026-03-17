@@ -70,77 +70,6 @@ interface RegStatus {
   lapTimeMs?: number | null;
 }
 
-function RecoveryRegisterForm({
-  events,
-  wallet,
-  onSuccess,
-  disabled,
-}: {
-  events: GameEvent[];
-  wallet: string;
-  onSuccess: () => void;
-  disabled: boolean;
-}) {
-  const [eventId, setEventId] = useState('');
-  const [signature, setSignature] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [recoveryError, setRecoveryError] = useState('');
-  const handleRecovery = async () => {
-    if (!eventId.trim() || !signature.trim() || !wallet || disabled) return;
-    setLoading(true);
-    setRecoveryError('');
-    try {
-      const res = await fetch('/api/game/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId: eventId.trim(), wallet, signature: signature.trim() }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Registration failed');
-      setSignature('');
-      onSuccess();
-    } catch (e) {
-      setRecoveryError(e instanceof Error ? e.message : 'Failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-  return (
-    <div className="mt-3 pt-3 border-t border-amber-500/20 space-y-2">
-      <select
-        value={eventId}
-        onChange={(e) => setEventId(e.target.value)}
-        className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-sm text-white"
-        disabled={disabled}
-      >
-        <option value="">Select league (you paid this entry fee)</option>
-        {events.map((ev) => (
-          <option key={ev.id} value={ev.id}>
-            {ev.leagueName} – {ev.entryFeeSol} SOL
-          </option>
-        ))}
-      </select>
-      <input
-        type="text"
-        placeholder="Transaction signature (from wallet or Solscan)"
-        value={signature}
-        onChange={(e) => setSignature(e.target.value)}
-        className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-sm text-white font-mono placeholder:text-gray-500"
-        disabled={disabled}
-      />
-      <button
-        type="button"
-        onClick={handleRecovery}
-        disabled={disabled || !eventId || !signature.trim() || loading}
-        className="px-4 py-2 rounded bg-amber-500/80 hover:bg-amber-500 text-black text-sm font-medium disabled:opacity-50"
-      >
-        {loading ? 'Submitting…' : 'Complete registration'}
-      </button>
-      {recoveryError && <p className="text-sm text-red-400">{recoveryError}</p>}
-    </div>
-  );
-}
-
 export default function F1GamePage() {
   const { connected, publicKey, sendTransaction } = useWallet();
   const { connection } = useConnection();
@@ -598,20 +527,6 @@ export default function F1GamePage() {
                 </p>
               )}
             </div>
-            {/* Recovery: paid but not registered (e.g. 400 before tx was visible) */}
-            {events.length > 0 && (
-              <details className="mt-4 card-cyber border-amber-500/30 bg-amber-500/5 p-4">
-                <summary className="text-sm text-amber-200/90 cursor-pointer list-none">
-                  You paid but weren&apos;t registered? Complete registration with your transaction signature
-                </summary>
-                <RecoveryRegisterForm
-                  events={events}
-                  wallet={walletStr ?? ''}
-                  onSuccess={fetchGameState}
-                  disabled={!!myRegistration}
-                />
-              </details>
-            )}
           </div>
 
           {/* Upgrades (if registered) */}

@@ -292,8 +292,8 @@ export async function ensureOpenEventsForCurrentWeek(): Promise<void> {
 
 /**
  * Open events for the current game week only. One per league (dedupe by league_id, prefer earliest week_start).
- * Preferring the earliest week ensures "Complete registration" and UI always use the event that will become
- * "Last race" when the week closes—avoiding sign-up to a "next week" event and missing the current week's leaderboard.
+ * Preferring the earliest week ensures registration targets the event that will become "Last race" when the week
+ * closes—avoiding sign-up to a "next week" event and missing the current week's leaderboard.
  * @param sb Optional client (e.g. service role); when provided, used for the query (avoids RLS blocking admin flows).
  */
 export async function getOpenEventsForCurrentWeek(sb?: SupabaseClient | null): Promise<(WeeklyEvent & { league: League })[]> {
@@ -553,12 +553,26 @@ export async function hasRegistrationForWeek(
   return !regError && (regs?.length ?? 0) > 0;
 }
 
-/** Insert registration (event_id, wallet_address, tx_signature). Fails if already registered for this event or for another league this week. */
+/** Insert registration (event_id, wallet_address, tx_signature). Fails if already registered for this event or for another league this week, or if this tx was already used (one payment = one registration). */
 export async function insertRegistration(
   eventId: string,
   walletAddress: string,
   txSignature: string
 ): Promise<{ ok: boolean; error?: string }> {
+  const sig = txSignature.trim();
+  if (!sig) return { ok: false, error: 'Missing transaction signature' };
+  const { data: existingSig } = await supabase
+    .from('registrations')
+    .select('id')
+    .eq('tx_signature', sig)
+    .limit(1)
+    .maybeSingle();
+  if (existingSig) {
+    return {
+      ok: false,
+      error: 'This payment transaction has already been used for a registration. Each week requires a new payment.',
+    };
+  }
   const event = await getEventById(eventId);
   if (!event) return { ok: false, error: 'Event not found' };
   const alreadyThisWeek = await hasRegistrationForWeek(walletAddress, event.week_start);
@@ -568,7 +582,7 @@ export async function insertRegistration(
   const { error } = await supabase.from('registrations').insert({
     event_id: eventId,
     wallet_address: walletAddress,
-    tx_signature: txSignature,
+    tx_signature: sig,
   });
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'Already registered for this event' };
