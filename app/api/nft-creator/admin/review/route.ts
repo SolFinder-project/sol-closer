@@ -21,27 +21,48 @@ function checkAdmin(request: NextRequest): boolean {
 
 type NftAttribute = { trait_type: string; value: string | number | boolean };
 
+function normalizeAttributeValue(value: unknown): string | number | boolean {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+  if (value == null) return '';
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
+function parseAttributesArray(input: unknown[]): NftAttribute[] {
+  return input
+    .filter((item) => item && typeof item === 'object' && 'trait_type' in item && 'value' in item)
+    .map((item) => {
+      const attr = item as { trait_type?: unknown; value?: unknown };
+      return {
+        trait_type: String(attr.trait_type ?? '').trim(),
+        value: normalizeAttributeValue(attr.value),
+      };
+    })
+    .filter((attr) => attr.trait_type.length > 0);
+}
+
 function normalizeAttributes(input: unknown): NftAttribute[] {
   if (!input) return [];
   if (Array.isArray(input)) {
-    return input
-      .filter((item) => item && typeof item === 'object' && 'trait_type' in item && 'value' in item)
-      .map((item) => {
-        const attr = item as { trait_type?: unknown; value?: unknown };
-        return {
-          trait_type: String(attr.trait_type ?? '').trim(),
-          value:
-            typeof attr.value === 'string' || typeof attr.value === 'number' || typeof attr.value === 'boolean'
-              ? attr.value
-              : String(attr.value ?? ''),
-        };
-      })
-      .filter((attr) => attr.trait_type.length > 0);
+    return parseAttributesArray(input);
   }
   if (typeof input === 'object') {
+    // Submission form can store { attributes: [{ trait_type, value }] }.
+    const nested = (input as { attributes?: unknown }).attributes;
+    if (Array.isArray(nested)) {
+      return parseAttributesArray(nested);
+    }
     return Object.entries(input as Record<string, unknown>).map(([trait_type, value]) => ({
       trait_type,
-      value: typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? value : String(value ?? ''),
+      value: normalizeAttributeValue(value),
     }));
   }
   return [];
