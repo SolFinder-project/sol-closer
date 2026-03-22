@@ -11,6 +11,7 @@ import { getConnection } from './connection';
 import { sendAndConfirmWithRetry } from './sendAndConfirmWithRetry';
 import type { CloseAccountResult } from '@/types/token-account';
 import type { DriftUserAccount } from './drift';
+import { MAX_DRIFT_CLOSE_PER_TX } from './constants';
 import { saveTransaction } from '@/lib/supabase/transactions';
 import { getCreatorPointsBonus } from '@/lib/nftCreator';
 import { safePublicKey, cleanEnvAddress } from './validators';
@@ -59,69 +60,85 @@ export async function closeDriftUserAccounts(
     }
 
     const totalReclaimable = accounts.reduce((sum, a) => sum + a.lamports, 0);
-    const feeLamports = Math.floor((totalReclaimable * feePercentage) / 100);
-    const referralLamports = validReferrerPubkey
-      ? Math.floor((totalReclaimable * referralFeePercentage) / 100)
-      : 0;
+    const walletStr = walletAdapter.publicKey.toString();
+    const f1CreatorBonusPts = await getCreatorPointsBonus(walletStr).catch(() => 0);
 
-    const res = await fetch('/api/drift/build-close-tx', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        accountPubkeys: accounts.map((a) => a.pubkey.toString()),
-        authority: walletAdapter.publicKey.toString(),
-        feeLamports,
-        referralLamports,
-        referrerPubkey: validReferrerPubkey,
-        feeRecipient,
-      }),
-    });
+    let firstSignature: string | null = null;
+    let totalClosed = 0;
+    let totalFeePaid = 0;
+    let totalReferralPaid = 0;
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || `API error ${res.status}`);
+    for (let i = 0; i < accounts.length; i += MAX_DRIFT_CLOSE_PER_TX) {
+      const chunk = accounts.slice(i, i + MAX_DRIFT_CLOSE_PER_TX);
+      const chunkLamports = chunk.reduce((sum, a) => sum + a.lamports, 0);
+      const feeLamports = Math.floor((chunkLamports * feePercentage) / 100);
+      const referralLamports = validReferrerPubkey
+        ? Math.floor((chunkLamports * referralFeePercentage) / 100)
+        : 0;
+
+      const res = await fetch('/api/drift/build-close-tx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountPubkeys: chunk.map((a) => a.pubkey.toString()),
+          authority: walletStr,
+          feeLamports,
+          referralLamports,
+          referrerPubkey: validReferrerPubkey,
+          feeRecipient,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `API error ${res.status}`);
+      }
+
+      const { serializedTransaction } = (await res.json()) as { serializedTransaction: string };
+      if (!serializedTransaction) {
+        throw new Error('No transaction returned');
+      }
+
+      const raw = atob(serializedTransaction);
+      const txBuf = new Uint8Array(raw.length);
+      for (let j = 0; j < raw.length; j++) txBuf[j] = raw.charCodeAt(j);
+      const transaction = Transaction.from(txBuf);
+
+      const signed = await walletAdapter.signTransaction(transaction);
+      const signature = await sendAndConfirmWithRetry(connection, signed.serialize());
+      if (!firstSignature) firstSignature = signature;
+
+      totalClosed += chunk.length;
+      totalFeePaid += feeLamports / 1e9;
+      totalReferralPaid += referralLamports / 1e9;
+
+      const chunkSol = chunkLamports / 1e9;
+      const chunkNet = chunkSol - feeLamports / 1e9 - referralLamports / 1e9;
+      try {
+        await saveTransaction({
+          signature,
+          wallet_address: walletStr,
+          accounts_closed: chunk.length,
+          sol_reclaimed: chunkSol,
+          fee: feeLamports / 1e9,
+          net_received: chunkNet,
+          referrer_code: validReferrerPubkey ?? undefined,
+          referral_earned: referralLamports > 0 ? referralLamports / 1e9 : undefined,
+          timestamp: Date.now(),
+          reclaim_type: 'drift',
+          f1_creator_bonus_pts: f1CreatorBonusPts,
+        });
+      } catch (supabaseError) {
+        logger.error('Drift reclaim Supabase save error:', supabaseError);
+      }
     }
-
-    const { serializedTransaction } = (await res.json()) as { serializedTransaction: string };
-    if (!serializedTransaction) {
-      throw new Error('No transaction returned');
-    }
-
-    const raw = atob(serializedTransaction);
-    const txBuf = new Uint8Array(raw.length);
-    for (let i = 0; i < raw.length; i++) txBuf[i] = raw.charCodeAt(i);
-    const transaction = Transaction.from(txBuf);
-
-    const signed = await walletAdapter.signTransaction(transaction);
-    const signature = await sendAndConfirmWithRetry(connection, signed.serialize());
 
     const solReclaimedGross = totalReclaimable / 1e9;
-    const totalFeesPaid = (feeLamports + referralLamports) / 1e9;
-    const netReceived = solReclaimedGross - totalFeesPaid;
-
-    try {
-      const walletStr = walletAdapter.publicKey.toString();
-      const f1CreatorBonusPts = await getCreatorPointsBonus(walletStr).catch(() => 0);
-      await saveTransaction({
-        signature,
-        wallet_address: walletStr,
-        accounts_closed: accounts.length,
-        sol_reclaimed: solReclaimedGross,
-        fee: totalFeesPaid,
-        net_received: netReceived,
-        referrer_code: validReferrerPubkey ?? undefined,
-        referral_earned: referralLamports > 0 ? referralLamports / 1e9 : undefined,
-        timestamp: Date.now(),
-        reclaim_type: 'drift',
-        f1_creator_bonus_pts: f1CreatorBonusPts,
-      });
-    } catch (supabaseError) {
-      logger.error('Drift reclaim Supabase save error:', supabaseError);
-    }
+    const netReceived = solReclaimedGross - totalFeePaid - totalReferralPaid;
 
     return {
-      signature,
-      accountsClosed: accounts.length,
+      signature: firstSignature ?? '',
+      accountsClosed: totalClosed,
       solReclaimed: netReceived,
       success: true,
       warningMessage: referralDisabledReason ?? undefined,

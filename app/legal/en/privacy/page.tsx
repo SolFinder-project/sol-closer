@@ -6,7 +6,7 @@ import Link from 'next/link';
 export default function PrivacyPolicy() {
   return (
     <main className="min-h-screen bg-dark-bg">
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-dark-bg/80 border-b border-dark-border">
+      <header className="sticky top-0 z-50 bg-black">
         <div className="container mx-auto px-4 py-4">
           <Link href="/">
             <Logo />

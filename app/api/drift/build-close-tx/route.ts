@@ -10,6 +10,7 @@ import {
   ComputeBudgetProgram,
 } from '@solana/web3.js';
 import { getConnectionForRequest } from '@/lib/solana/connection';
+import { MAX_DRIFT_CLOSE_PER_TX } from '@/lib/solana/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const capped = accountPubkeys.slice(0, MAX_DRIFT_CLOSE_PER_TX);
+    if (capped.length !== accountPubkeys.length) {
+      return NextResponse.json(
+        { error: `At most ${MAX_DRIFT_CLOSE_PER_TX} Drift accounts per request (Solana tx size limit). Send multiple requests to close more.` },
+        { status: 400 }
+      );
+    }
+
     const authority = new PublicKey(authorityStr);
     const feeRecipient = new PublicKey(feeRecipientStr);
     // Use proxy (same as client) so RPC goes through /api/rpc with client Origin; avoids 401 when Helius rejects direct server calls.
@@ -66,7 +75,7 @@ export async function POST(request: Request) {
     const transaction = new Transaction();
     transaction.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }));
 
-    for (const pubkeyStr of accountPubkeys) {
+    for (const pubkeyStr of capped) {
       const userAccountPubkey = new PublicKey(pubkeyStr);
       const ix = await driftClient.getUserDeletionIx(userAccountPubkey);
       transaction.add(ix);

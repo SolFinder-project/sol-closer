@@ -51,6 +51,12 @@ export const MAX_BURN_CLOSE_PER_TX = 4;
 /** Max single-ix reclaim (Pump PDA, PumpSwap PDA) per tx. Size-safe. */
 export const MAX_SINGLE_IX_RECLAIM_PER_TX = 12;
 /**
+ * Max Drift user account closes per tx. Solana legacy tx limit 1232 bytes (PACKET_DATA_SIZE);
+ * each delete_user ix adds multiple accounts (user + state + program, etc.). Chunking avoids "transaction too large".
+ * @see https://solana.com/docs/core/constants-reference
+ */
+export const MAX_DRIFT_CLOSE_PER_TX = 4;
+/**
  * Max cNFT burns per tx. Bubblegum merkle proof can be ~640 bytes per burn (canopy depth 0);
  * even with truncateCanopy, 2+ burns often exceed Solana's 1232-byte tx limit → "encoding overruns Uint8Array".
  * Use 1 per tx so serialization never overflows; multiple cNFTs are handled by multiple txs in closeCnftAssets.

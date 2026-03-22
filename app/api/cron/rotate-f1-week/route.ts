@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * GET /api/cron/rotate-f1-week
  * Called by Vercel Cron every Sunday at 17:00 UTC (vercel.json).
  * Auth: Authorization: Bearer <CRON_SECRET>. Closes events whose week has ended and creates next week's events.
- * Passes DAS options (NEXT_PUBLIC_SITE_URL or VERCEL_URL) so Creator NFT race-time bonus is applied at close (Helius Allowed Domains).
+ * Passes DAS options (NEXT_PUBLIC_APP_URL, or NEXT_PUBLIC_SITE_URL, or VERCEL_URL) so Creator NFT race-time bonus is applied at close (Helius Allowed Domains).
  */
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');

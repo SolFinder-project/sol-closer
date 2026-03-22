@@ -3,7 +3,8 @@
  * with Origin/Referer so Allowed Domains accepts the request — same idea as dasOptionsFromRequest
  * but without an incoming browser Request.
  *
- * Requires one of: NEXT_PUBLIC_SITE_URL (e.g. https://solpit.app) or VERCEL_URL (set by Vercel).
+ * Requires one of: NEXT_PUBLIC_APP_URL (preferred, same as rest of app), NEXT_PUBLIC_SITE_URL (legacy),
+ * or VERCEL_URL (set by Vercel).
  */
 /** Same shape as GameRpcOptions in lib/supabase/game.ts (avoid importing game from this module). */
 export type CronDasRpcOptions = {
@@ -12,7 +13,9 @@ export type CronDasRpcOptions = {
 };
 
 function resolveAppOrigin(): string {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const explicit =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (explicit) return explicit.replace(/\/$/, '');
   const vercel = process.env.VERCEL_URL?.trim();
   if (vercel) {

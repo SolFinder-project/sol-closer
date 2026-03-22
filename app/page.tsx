@@ -134,7 +134,7 @@ export default function Home() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-neon-pink/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
       </div>
 
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-dark-bg/80 border-b border-dark-border">
+      <header className="sticky top-0 z-50 bg-black">
         <div className="container mx-auto px-3 md:px-4 py-3 md:py-4">
           <div className="flex justify-between items-center gap-2">
             {/* Logo - toujours avec texte */}
@@ -192,7 +192,7 @@ export default function Home() {
 
           {/* Menu mobile */}
           {mobileMenuOpen && (
-            <nav className="xl:hidden mt-4 pb-4 border-t border-dark-border pt-4 space-y-3">
+            <nav className="xl:hidden mt-4 pb-4 border-t border-neutral-800 pt-4 space-y-3">
               <button onClick={() => navigateTo('scanner')} className="block w-full text-left text-gray-400 hover:text-neon-purple transition-colors py-2">
                 🔍 Scanner
               </button>
