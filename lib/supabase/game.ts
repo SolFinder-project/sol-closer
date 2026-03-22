@@ -284,6 +284,7 @@ export async function ensureOpenEventsForCurrentWeek(): Promise<void> {
     week_start: weekStartIso,
     week_end: weekEndIso,
     status: 'open' as const,
+    closed_at_ms: null as null,
   }));
   await supabase
     .from('weekly_events')
@@ -857,6 +858,8 @@ export async function closeCurrentWeekAndStartNext(
     week_start: nextWeekStartIso,
     week_end: nextWeekEndIso,
     status: 'open' as const,
+    /** Explicit null so upsert ON CONFLICT does not leave a stale closed_at_ms from a previous row. */
+    closed_at_ms: null as null,
   }));
   const db = adminClient ?? supabase;
   const { error: upsertErr } = await db

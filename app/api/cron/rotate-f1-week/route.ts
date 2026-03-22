@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
 import { closeCurrentWeekAndStartNext } from '@/lib/supabase/game';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { getDasOptionsForCron } from '@/lib/api/dasOptionsForCron';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/cron/rotate-f1-week
- * Called by Vercel Cron every Sunday at 17:00 UTC.
+ * Called by Vercel Cron every Sunday at 17:00 UTC (vercel.json).
  * Auth: Authorization: Bearer <CRON_SECRET>. Closes events whose week has ended and creates next week's events.
+ * Passes DAS options (NEXT_PUBLIC_SITE_URL or VERCEL_URL) so Creator NFT race-time bonus is applied at close (Helius Allowed Domains).
  */
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -30,7 +32,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await closeCurrentWeekAndStartNext(false, false, adminClient);
+    const rpcOptions = getDasOptionsForCron();
+    const result = await closeCurrentWeekAndStartNext(false, false, adminClient, rpcOptions ?? undefined);
     if (!result.ok) {
       return NextResponse.json(
         { error: result.error ?? 'Rotation failed', closed: result.closed },
