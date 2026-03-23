@@ -138,7 +138,7 @@ export default function Home() {
         <div className="container mx-auto px-3 md:px-4 py-3 md:py-4">
           <div className="flex justify-between items-center gap-2">
             {/* Logo - toujours avec texte */}
-            <div onClick={() => navigateTo('home')} className="cursor-pointer flex-shrink min-w-0">
+            <div onClick={() => navigateTo('home')} className="cursor-pointer flex-shrink min-w-0 -ml-1">
               <Logo size="sm" showText={true} />
             </div>
             

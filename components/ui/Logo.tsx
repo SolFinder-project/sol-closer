@@ -14,19 +14,19 @@ interface LogoProps {
 
 export default function Logo({ size = 'md', showText = true, className = '' }: LogoProps) {
   const sizes = {
-    sm: { container: 'w-12 h-12', text: 'text-base', tagline: 'hidden' },
+    sm: { container: 'w-14 h-14', text: 'text-base', tagline: 'hidden' },
     md: { container: 'w-16 h-16', text: 'text-2xl', tagline: 'text-[10px]' },
     lg: { container: 'w-28 h-28', text: 'text-4xl', tagline: 'text-sm' },
   };
 
   const textColClass =
     sizes[size].tagline === 'hidden'
-      ? 'flex h-12 flex-col justify-center min-w-0'
+      ? 'flex h-14 flex-col justify-center min-w-0'
       : 'flex flex-col min-w-0 justify-center';
 
   const imageClassBySize = {
-    sm: 'scale-[1.26] -translate-x-1',
-    md: 'scale-[1.14] -translate-x-0.5',
+    sm: 'scale-[1.5] -translate-x-2',
+    md: 'scale-[1.2] -translate-x-1',
     lg: 'scale-[1.06]',
   } as const;
 
