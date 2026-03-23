@@ -1,7 +1,8 @@
 /**
  * RPC/DAS options for server-only jobs (Vercel Cron) that call Helius via the app `/api/rpc` proxy
- * with Origin/Referer so Allowed Domains accepts the request — same idea as dasOptionsFromRequest
- * but without an incoming browser Request.
+ * with Origin/Referer so Allowed Domains accepts the request.
+ *
+ * Prefer the current request origin when available (same deployment host), then fallback to env.
  *
  * Requires one of: NEXT_PUBLIC_APP_URL (preferred, same as rest of app), NEXT_PUBLIC_SITE_URL (legacy),
  * or VERCEL_URL (set by Vercel).
@@ -12,11 +13,24 @@ export type CronDasRpcOptions = {
   fetch?: (url: string, init?: RequestInit) => Promise<Response>;
 };
 
-function resolveAppOrigin(): string {
+function normalizeOrigin(raw: string): string {
+  return raw.trim().replace(/\/$/, '');
+}
+
+function resolveAppOrigin(request?: Request): string {
+  if (request?.url) {
+    try {
+      const fromRequest = new URL(request.url).origin;
+      if (fromRequest) return normalizeOrigin(fromRequest);
+    } catch {
+      // ignore and fallback to env
+    }
+  }
+
   const explicit =
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
     process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (explicit) return explicit.replace(/\/$/, '');
+  if (explicit) return normalizeOrigin(explicit);
   const vercel = process.env.VERCEL_URL?.trim();
   if (vercel) {
     const host = vercel.replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -28,8 +42,8 @@ function resolveAppOrigin(): string {
 /**
  * Returns proxy + headers for DAS/Creator NFT resolution during cron, or undefined if no base URL is configured.
  */
-export function getDasOptionsForCron(): CronDasRpcOptions | undefined {
-  const normalized = resolveAppOrigin();
+export function getDasOptionsForCron(request?: Request): CronDasRpcOptions | undefined {
+  const normalized = resolveAppOrigin(request);
   if (!normalized) return undefined;
 
   const rpcUrl = `${normalized}/api/rpc`;
