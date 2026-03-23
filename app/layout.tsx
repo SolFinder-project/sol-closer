@@ -54,9 +54,9 @@ export const metadata: Metadata = {
     description: "Reclaim SOL from empty accounts, dust, Burn NFT, Pump PDA, Drift, cNFT close. Weekly F1 race; create F1-themed NFTs. Stake with PSOL or Marinade, or swap in-app.",
     images: [
       {
-        url: "/og-image.png?v=3",
+        url: "/og-image.png?v=4",
         width: 1024,
-        height: 338,
+        height: 574,
         alt: "SolPit — reclaim locked SOL, race weekly, mint, earn",
         type: "image/png",
       },
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "SolPit - Reclaim. Refuel. Race.",
     description: "Reclaim SOL from empty accounts, dust, Burn NFT, Pump PDA, Drift, cNFT close. Weekly F1 race; create F1-themed NFTs. Stake with PSOL or Marinade, or swap in-app.",
-    images: ["/og-image.png?v=3"],
+    images: ["/og-image.png?v=4"],
   },
   icons: {
     icon: [
