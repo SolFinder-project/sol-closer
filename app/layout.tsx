@@ -16,8 +16,12 @@ const orbitron = Orbitron({
   variable: "--font-orbitron",
 });
 
+const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://solcloser.com');
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://solcloser.com'),
+  metadataBase: new URL(appUrl),
   title: "SolPit - Reclaim. Refuel. Race.",
   description: "Reclaim SOL from empty accounts, dust, Burn NFT, Pump PDA, PumpSwap PDA, Drift, cNFT close. Weekly F1 race: earn points, best lap wins. Create F1-themed NFTs from your reclaims. Stake with PSOL or Marinade, or swap with Jupiter. 10% referral.",
   keywords: [
@@ -42,13 +46,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
+    url: appUrl,
     locale: "en_US",
     siteName: "SolPit",
     title: "SolPit - Reclaim. Refuel. Race.",
     description: "Reclaim SOL from empty accounts, dust, Burn NFT, Pump PDA, Drift, cNFT close. Weekly F1 race; create F1-themed NFTs. Stake with PSOL or Marinade, or swap in-app.",
     images: [
       {
-        url: "/og-image.png",
+        url: "/og-image.png?v=2",
         width: 1024,
         height: 338,
         alt: "SolPit — reclaim locked SOL, race weekly, mint, earn",
@@ -60,17 +65,18 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "SolPit - Reclaim. Refuel. Race.",
     description: "Reclaim SOL from empty accounts, dust, Burn NFT, Pump PDA, Drift, cNFT close. Weekly F1 race; create F1-themed NFTs. Stake with PSOL or Marinade, or swap in-app.",
-    images: ["/og-image.png"],
+    images: ["/og-image.png?v=2"],
   },
   icons: {
     icon: [
-      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
-      { url: "/favicon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/favicon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico?v=2", sizes: "any" },
+      { url: "/favicon-32.png?v=2", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16.png?v=2", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-192.png?v=2", sizes: "192x192", type: "image/png" },
+      { url: "/favicon-512.png?v=2", sizes: "512x512", type: "image/png" },
     ],
     apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/apple-touch-icon.png?v=2", sizes: "180x180", type: "image/png" },
     ],
   },
 };

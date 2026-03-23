@@ -24,6 +24,12 @@ export default function Logo({ size = 'md', showText = true, className = '' }: L
       ? 'flex h-12 flex-col justify-center min-w-0'
       : 'flex flex-col min-w-0 justify-center';
 
+  const imageClassBySize = {
+    sm: 'scale-[1.26] -translate-x-1',
+    md: 'scale-[1.14] -translate-x-0.5',
+    lg: 'scale-[1.06]',
+  } as const;
+
   return (
     <div className={`flex items-center gap-2 md:gap-3 ${className}`}>
       <div
@@ -34,7 +40,7 @@ export default function Logo({ size = 'md', showText = true, className = '' }: L
           alt="SolPit"
           width={1024}
           height={1024}
-          className="max-h-full max-w-full w-full h-full object-contain object-center transition-all duration-300 group-hover:scale-110 drop-shadow-2xl"
+          className={`max-h-full max-w-full w-full h-full object-contain object-center transition-all duration-300 group-hover:scale-110 drop-shadow-2xl ${imageClassBySize[size]}`}
           priority
         />
       </div>
