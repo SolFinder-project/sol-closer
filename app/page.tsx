@@ -567,7 +567,7 @@ function HomeContent({ setSection, globalStats, liveFeedRefreshTrigger = 0 }: { 
               <ul className="space-y-1.5 md:space-y-2 text-xs md:text-sm">
                 <li>
                   <a 
-                    href="https://discord.gg/4Df2TERj4" 
+                    href="https://discord.gg/YmApTXQ7Qh" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-gray-400 hover:text-neon-pink transition-colors flex items-center gap-2"
@@ -606,7 +606,7 @@ function HomeContent({ setSection, globalStats, liveFeedRefreshTrigger = 0 }: { 
                 </li>
                 <li>
                   <a 
-                    href="https://twitter.com/SOLcloserApp" 
+                    href="https://x.com/SolPitApp" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-gray-400 hover:text-neon-pink transition-colors flex items-center gap-2"
@@ -614,7 +614,7 @@ function HomeContent({ setSection, globalStats, liveFeedRefreshTrigger = 0 }: { 
                     <svg className="w-4 h-4 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                     </svg>
-                    Twitter
+                    X
                   </a>
                 </li>
               </ul>
