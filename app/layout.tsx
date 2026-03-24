@@ -3,6 +3,7 @@ import { Inter, Orbitron } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import MobileDevBanner from "@/components/ui/MobileDevBanner";
+import { getSiteUrl } from "@/lib/seo/siteUrl";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
@@ -16,31 +17,36 @@ const orbitron = Orbitron({
   variable: "--font-orbitron",
 });
 
-const appUrl =
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
-  process.env.NEXT_PUBLIC_APP_URL ||
-  'https://solcloser.com';
+const appUrl = getSiteUrl();
+
+const metaDescription =
+  "SolPit: reclaim SOL from empty token accounts, dust, and more on Solana. Weekly F1 league, points and lap bonuses. SolPit Creator NFTs with tier-based utility (reclaim fee, referral, F1). Stake with PSOL or Marinade, or swap with Jupiter.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: "SolPit - Reclaim. Refuel. Race.",
-  description: "Reclaim SOL from empty accounts, dust, Burn NFT, Pump PDA, PumpSwap PDA, Drift, cNFT close. Weekly F1 race: earn points, best lap wins. Create F1-themed NFTs from your reclaims. Stake with PSOL or Marinade, or swap with Jupiter. 10% referral.",
+  description: metaDescription,
   keywords: [
+    "SolPit",
     "reclaim SOL",
+    "Solana",
     "close token accounts",
     "Burn NFT",
-    "cNFT close",
-    "Solana",
+    "cNFT",
     "F1 race",
+    "SolPit Creator NFT",
     "NFT Creator",
     "SPL token",
     "recover locked SOL",
-    "Solana wallet cleanup",
-    "empty token accounts",
+    "wallet cleanup",
+    "Jupiter swap",
   ],
   authors: [{ name: "SolPit" }],
   creator: "SolPit",
   publisher: "SolPit",
+  alternates: {
+    canonical: appUrl,
+  },
   robots: {
     index: true,
     follow: true,
@@ -51,13 +57,13 @@ export const metadata: Metadata = {
     locale: "en_US",
     siteName: "SolPit",
     title: "SolPit - Reclaim. Refuel. Race.",
-    description: "Reclaim SOL from empty accounts, dust, Burn NFT, Pump PDA, Drift, cNFT close. Weekly F1 race; create F1-themed NFTs. Stake with PSOL or Marinade, or swap in-app.",
+    description: metaDescription,
     images: [
       {
-        url: "/og-image.png?v=4",
+        url: "/og-image.png?v=5",
         width: 1024,
         height: 574,
-        alt: "SolPit — reclaim locked SOL, race weekly, mint, earn",
+        alt: "SolPit — reclaim SOL on Solana, F1 league, Creator NFTs",
         type: "image/png",
       },
     ],
@@ -65,8 +71,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "SolPit - Reclaim. Refuel. Race.",
-    description: "Reclaim SOL from empty accounts, dust, Burn NFT, Pump PDA, Drift, cNFT close. Weekly F1 race; create F1-themed NFTs. Stake with PSOL or Marinade, or swap in-app.",
-    images: ["/og-image.png?v=4"],
+    description: metaDescription,
+    images: ["/og-image.png?v=5"],
   },
   icons: {
     icon: [
