@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from './client';
 
 /** Type of reclaim for stats/History display. All closers pass this. */
@@ -22,12 +23,13 @@ export interface TransactionData {
 }
 
 /**
- * transactions: timestamp as epoch ms (column type bigint).
- * user_stats / global_stats: timestamp columns must be timestamptz; we send ISO 8601 per PostgreSQL docs
- * (https://www.postgresql.org/docs/16/datatype-datetime.html). Integer epoch causes "date/time field value out of range".
- * If you see "invalid input syntax for type bigint" on stats, run supabase/migrations/20250304200000_transactions_stats_timestamptz.sql.
+ * Persists one reclaim + stats updates. Use from API routes with `getSupabaseAdmin()` after RLS hardening
+ * (anon no longer has INSERT/UPDATE on transactions / user_stats / global_stats).
  */
-export async function saveTransaction(data: TransactionData) {
+export async function recordReclaimTransactionWithClient(
+  client: SupabaseClient,
+  data: TransactionData
+): Promise<{ success: true } | { success: false; error: unknown }> {
   try {
     const timestampMs = typeof data.timestamp === 'number' && Number.isFinite(data.timestamp)
       ? data.timestamp
@@ -52,28 +54,25 @@ export async function saveTransaction(data: TransactionData) {
     if (data.f1_creator_bonus_pts != null && Number.isInteger(data.f1_creator_bonus_pts)) {
       row.f1_creator_bonus_pts = data.f1_creator_bonus_pts;
     }
-    let { error: txError } = await supabase
-      .from('transactions')
-      .insert([row]);
+    let { error: txError } = await client.from('transactions').insert([row]);
     if (txError && (data.reclaim_type != null || data.chain != null || data.f1_creator_bonus_pts != null)) {
       if (data.reclaim_type != null) delete row.reclaim_type;
       if (data.chain != null) delete row.chain;
       if (data.f1_creator_bonus_pts != null) delete row.f1_creator_bonus_pts;
-      const retry = await supabase.from('transactions').insert([row]);
+      const retry = await client.from('transactions').insert([row]);
       txError = retry.error;
     }
     if (txError) throw txError;
 
-    // 2. Stats tables: send ISO 8601 for timestamptz columns (PostgreSQL accepts ISO; raw int causes "date/time field value out of range")
     const dataWithMs = { ...data, timestamp: timestampMs };
-    const errUser = await updateUserStats(dataWithMs, 'iso');
+    const errUser = await updateUserStats(client, dataWithMs, 'iso');
     if (errUser) throw errUser;
-    const errGlobal = await updateGlobalStats(dataWithMs, 'iso');
+    const errGlobal = await updateGlobalStats(client, dataWithMs, 'iso');
     if (errGlobal) throw errGlobal;
 
     if (data.referrer_code && data.referral_earned && data.referral_earned > 0) {
       try {
-        await updateReferrerStats(data.referrer_code, data.referral_earned, data.wallet_address, 'iso');
+        await updateReferrerStats(client, data.referrer_code, data.referral_earned, data.wallet_address, 'iso');
       } catch (referrerErr) {
         console.warn('[Supabase] Referrer stats update failed (transaction was saved):', (referrerErr as Error)?.message ?? referrerErr);
       }
@@ -83,6 +82,31 @@ export async function saveTransaction(data: TransactionData) {
   } catch (error: unknown) {
     const err = error as { message?: string; details?: string; code?: string };
     console.error('Error saving transaction to Supabase:', err?.message ?? error, err?.details ?? '');
+    return { success: false, error };
+  }
+}
+
+/**
+ * Browser: POST to /api/transactions/reclaim (service role on server). After RLS hardening, direct anon inserts are denied.
+ */
+export async function saveTransaction(data: TransactionData) {
+  if (typeof window === 'undefined') {
+    console.warn('[saveTransaction] expected browser context');
+    return { success: false, error: new Error('saveTransaction must run in the browser') };
+  }
+  try {
+    const res = await fetch('/api/transactions/reclaim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      return { success: false, error: json?.error ?? res.statusText };
+    }
+    return { success: true };
+  } catch (error: unknown) {
+    console.error('Error posting reclaim to API:', error);
     return { success: false, error };
   }
 }
@@ -97,8 +121,12 @@ function toStatsTimestamp(ms: number, format: TimestampFormat): number | string 
 }
 
 /** Returns error if update failed, null on success. */
-async function updateUserStats(data: TransactionData, format: TimestampFormat): Promise<unknown> {
-  const { data: existing, error: fetchError } = await supabase
+async function updateUserStats(
+  client: SupabaseClient,
+  data: TransactionData,
+  format: TimestampFormat
+): Promise<unknown> {
+  const { data: existing, error: fetchError } = await client
     .from('user_stats')
     .select('*')
     .eq('wallet_address', data.wallet_address)
@@ -112,7 +140,7 @@ async function updateUserStats(data: TransactionData, format: TimestampFormat): 
   const now = toStatsTimestamp(Date.now(), format);
 
   if (existing) {
-    const { error } = await supabase
+    const { error } = await client
       .from('user_stats')
       .update({
         total_accounts_closed: Number(existing.total_accounts_closed) + Number(data.accounts_closed),
@@ -127,26 +155,28 @@ async function updateUserStats(data: TransactionData, format: TimestampFormat): 
 
     return error ?? null;
   }
-  const { error } = await supabase
-    .from('user_stats')
-    .insert([{
-      wallet_address: data.wallet_address,
-      total_accounts_closed: data.accounts_closed,
-      total_sol_reclaimed: data.sol_reclaimed,
-      total_fees_paid: data.fee,
-      total_net_received: data.net_received,
-      transaction_count: 1,
-      first_transaction_at: ts,
-      last_transaction_at: ts,
-      referral_earnings: 0,
-      referral_count: 0,
-    }]);
+  const { error } = await client.from('user_stats').insert([{
+    wallet_address: data.wallet_address,
+    total_accounts_closed: data.accounts_closed,
+    total_sol_reclaimed: data.sol_reclaimed,
+    total_fees_paid: data.fee,
+    total_net_received: data.net_received,
+    transaction_count: 1,
+    first_transaction_at: ts,
+    last_transaction_at: ts,
+    referral_earnings: 0,
+    referral_count: 0,
+  }]);
   return error ?? null;
 }
 
 /** Returns error if update failed, null on success. */
-async function updateGlobalStats(data: TransactionData, format: TimestampFormat): Promise<unknown> {
-  const { data: stats, error: fetchError } = await supabase
+async function updateGlobalStats(
+  client: SupabaseClient,
+  data: TransactionData,
+  format: TimestampFormat
+): Promise<unknown> {
+  const { data: stats, error: fetchError } = await client
     .from('global_stats')
     .select('*')
     .eq('id', 1)
@@ -159,7 +189,7 @@ async function updateGlobalStats(data: TransactionData, format: TimestampFormat)
   const now = toStatsTimestamp(Date.now(), format);
 
   if (stats) {
-    const { error } = await supabase
+    const { error } = await client
       .from('global_stats')
       .update({
         total_accounts_closed: Number(stats.total_accounts_closed) + Number(data.accounts_closed),
@@ -171,36 +201,35 @@ async function updateGlobalStats(data: TransactionData, format: TimestampFormat)
 
     if (error) return error;
   } else {
-    const { error } = await supabase
-      .from('global_stats')
-      .insert([{
-        id: 1,
-        total_accounts_closed: data.accounts_closed,
-        total_sol_reclaimed: data.sol_reclaimed,
-        total_transactions: 1,
-        total_users: 1,
-      }]);
+    const { error } = await client.from('global_stats').insert([{
+      id: 1,
+      total_accounts_closed: data.accounts_closed,
+      total_sol_reclaimed: data.sol_reclaimed,
+      total_transactions: 1,
+      total_users: 1,
+    }]);
 
     if (error) return error;
   }
 
-  const { count } = await supabase
-    .from('user_stats')
-    .select('*', { count: 'exact', head: true });
+  const { count } = await client.from('user_stats').select('*', { count: 'exact', head: true });
 
   if (count !== null) {
-    await supabase
-      .from('global_stats')
-      .update({ total_users: count })
-      .eq('id', 1);
+    await client.from('global_stats').update({ total_users: count }).eq('id', 1);
   }
   return null;
 }
 
-async function updateReferrerStats(referrerWallet: string, amount: number, referredWallet: string, format: TimestampFormat = 'ms') {
+async function updateReferrerStats(
+  client: SupabaseClient,
+  referrerWallet: string,
+  amount: number,
+  referredWallet: string,
+  format: TimestampFormat = 'ms'
+) {
   console.log(`📊 Updating referrer stats: ${referrerWallet} earned ${amount} SOL from ${referredWallet}`);
 
-  const { data: referrerStats, error: fetchError } = await supabase
+  const { data: referrerStats, error: fetchError } = await client
     .from('user_stats')
     .select('*')
     .eq('wallet_address', referrerWallet)
@@ -214,7 +243,7 @@ async function updateReferrerStats(referrerWallet: string, amount: number, refer
   const now = toStatsTimestamp(Date.now(), format);
 
   if (referrerStats) {
-    const { error } = await supabase
+    const { error } = await client
       .from('user_stats')
       .update({
         referral_earnings: Number(referrerStats.referral_earnings || 0) + Number(amount),
@@ -229,20 +258,18 @@ async function updateReferrerStats(referrerWallet: string, amount: number, refer
       console.log(`✅ Referrer ${referrerWallet.slice(0, 8)} credited with ${amount} SOL`);
     }
   } else {
-    const { error } = await supabase
-      .from('user_stats')
-      .insert([{
-        wallet_address: referrerWallet,
-        total_accounts_closed: 0,
-        total_sol_reclaimed: 0,
-        total_fees_paid: 0,
-        total_net_received: 0,
-        transaction_count: 0,
-        first_transaction_at: now,
-        last_transaction_at: now,
-        referral_earnings: amount,
-        referral_count: 1,
-      }]);
+    const { error } = await client.from('user_stats').insert([{
+      wallet_address: referrerWallet,
+      total_accounts_closed: 0,
+      total_sol_reclaimed: 0,
+      total_fees_paid: 0,
+      total_net_received: 0,
+      transaction_count: 0,
+      first_transaction_at: now,
+      last_transaction_at: now,
+      referral_earnings: amount,
+      referral_count: 1,
+    }]);
 
     if (error) {
       console.error('Error creating referrer stats:', error);
@@ -274,6 +301,13 @@ export async function getUserStats(walletAddress: string) {
   return data;
 }
 
+const EMPTY_GLOBAL_STATS = {
+  total_accounts_closed: 0,
+  total_sol_reclaimed: 0,
+  total_transactions: 0,
+  total_users: 0,
+} as const;
+
 export async function getGlobalStats() {
   const { data, error } = await supabase
     .from('global_stats')
@@ -283,29 +317,10 @@ export async function getGlobalStats() {
 
   if (error) {
     if (error.code === 'PGRST116') {
-      const { data: newData, error: insertError } = await supabase
-        .from('global_stats')
-        .insert([{
-          id: 1,
-          total_accounts_closed: 0,
-          total_sol_reclaimed: 0,
-          total_transactions: 0,
-          total_users: 0,
-        }])
-        .select()
-        .single();
-      
-      if (!insertError && newData) {
-        return newData;
-      }
+      return { ...EMPTY_GLOBAL_STATS };
     }
-    
-    return {
-      total_accounts_closed: 0,
-      total_sol_reclaimed: 0,
-      total_transactions: 0,
-      total_users: 0,
-    };
+    console.error('Error fetching global stats:', error);
+    return { ...EMPTY_GLOBAL_STATS };
   }
 
   return data;

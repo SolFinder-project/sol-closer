@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
-import { supabase } from '@/lib/supabase/client';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { getClassicNftMintsByOwner } from '@/lib/solana/das';
 import { getCreatorNftsForWallet } from '@/lib/nftCreator';
@@ -25,7 +24,12 @@ export async function GET(request: NextRequest) {
   const dasOpts = dasOptionsFromRequest(request);
 
   try {
-    const { data, error } = await supabase
+    const admin = getSupabaseAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
+
+    const { data, error } = await admin
       .from('nft_creator_submissions')
       .select('*')
       .eq('wallet_address', wallet)
@@ -39,21 +43,18 @@ export async function GET(request: NextRequest) {
     const rows = (data ?? []) as Record<string, unknown>[];
 
     // Ensure every finalized submission with mint+tier exists in nft_creator_tiers (so benefits and heldOnly work for old NFTs).
-    const admin = getSupabaseAdmin();
-    if (admin) {
-      for (const r of rows) {
-        if (
-          r.status === 'finalized' &&
-          typeof r.mint_address === 'string' &&
-          r.mint_address.trim() &&
-          typeof r.tier === 'string' &&
-          VALID_TIERS.includes(r.tier as string)
-        ) {
-          await admin.from('nft_creator_tiers').upsert(
-            { mint_address: (r.mint_address as string).trim(), tier: r.tier, created_at: new Date().toISOString() },
-            { onConflict: 'mint_address' }
-          );
-        }
+    for (const r of rows) {
+      if (
+        r.status === 'finalized' &&
+        typeof r.mint_address === 'string' &&
+        r.mint_address.trim() &&
+        typeof r.tier === 'string' &&
+        VALID_TIERS.includes(r.tier as string)
+      ) {
+        await admin.from('nft_creator_tiers').upsert(
+          { mint_address: (r.mint_address as string).trim(), tier: r.tier, created_at: new Date().toISOString() },
+          { onConflict: 'mint_address' }
+        );
       }
     }
 
@@ -131,7 +132,7 @@ export async function GET(request: NextRequest) {
         .filter((n) => !submissionMintSet.has(n.mint))
         .map((n) => n.mint);
       if (heldOnlyMints.length > 0) {
-        const { data: heldRows } = await supabase
+        const { data: heldRows } = await admin
           .from('nft_creator_submissions')
           .select('id, image_uri, metadata_uri, name, description, attributes, tier, mint_address, created_at, updated_at')
           .in('mint_address', heldOnlyMints)

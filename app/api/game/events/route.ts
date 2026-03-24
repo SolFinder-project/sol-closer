@@ -6,6 +6,7 @@ import {
   getLeagues,
   getRegistrationsByEvent,
 } from '@/lib/supabase/game';
+import { getSupabaseAdmin } from '@/lib/supabase/server';
 
 const FEE_PERCENT = 0.1; // 10% platform fee; 90% to prize pool
 
@@ -23,7 +24,12 @@ export async function GET() {
       getLeagues(),
     ]);
     if (openEvents.length < leagues.length) {
-      await ensureOpenEventsForCurrentWeek();
+      const admin = getSupabaseAdmin();
+      if (!admin) {
+        console.error('[game/events] SUPABASE_SERVICE_ROLE_KEY missing');
+        return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+      }
+      await ensureOpenEventsForCurrentWeek(admin);
     }
     const [events, lastClosedEvents] = await Promise.all([
       getOpenEventsForCurrentWeek(),

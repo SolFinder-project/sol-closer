@@ -3,6 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 import { getEventById, insertRegistration } from '@/lib/supabase/game';
 import { getConnectionForRequest } from '@/lib/solana/connection';
 import { verifyF1EntryTx } from '@/lib/solana/verifyF1Entry';
+import { getSupabaseAdmin } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +53,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: verification.error ?? 'Transaction verification failed' }, { status: 400 });
   }
 
-  const result = await insertRegistration(eventId, wallet, signature);
+  const admin = getSupabaseAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+  }
+
+  const result = await insertRegistration(eventId, wallet, signature, admin);
   if (!result.ok) {
     return NextResponse.json({ error: result.error ?? 'Registration failed' }, { status: 400 });
   }

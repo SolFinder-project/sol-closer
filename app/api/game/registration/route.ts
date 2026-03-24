@@ -8,6 +8,7 @@ import {
   updateRegistrationUpgrades,
   getOpenEventsForCurrentWeek,
 } from '@/lib/supabase/game';
+import { getSupabaseAdmin } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,7 +111,11 @@ export async function PUT(request: NextRequest) {
     getCreatorBonusPointsFromTransactions(wallet, startMs, endMs),
   ]);
   const maxPoints = pointsBase + pointsBonus;
-  const result = await updateRegistrationUpgrades(eventId, wallet, config, maxPoints);
+  const admin = getSupabaseAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+  }
+  const result = await updateRegistrationUpgrades(eventId, wallet, config, maxPoints, admin);
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }

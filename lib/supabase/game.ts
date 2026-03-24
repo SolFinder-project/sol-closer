@@ -262,8 +262,9 @@ function normalizeLeague(r: Record<string, unknown>): League {
 /**
  * Ensures one open event per league for the current game week. Uses week from existing open events if any, else getCurrentWeekBounds().
  * Creates missing events (e.g. Bronze) so all 3 leagues are always joinable.
+ * @param writeClient Service-role client; anon cannot INSERT/UPDATE weekly_events after RLS hardening.
  */
-export async function ensureOpenEventsForCurrentWeek(): Promise<void> {
+export async function ensureOpenEventsForCurrentWeek(writeClient: SupabaseClient): Promise<void> {
   const open = await getOpenEventsForCurrentWeek();
   let weekStartIso: string;
   let weekEndIso: string;
@@ -286,7 +287,7 @@ export async function ensureOpenEventsForCurrentWeek(): Promise<void> {
     status: 'open' as const,
     closed_at_ms: null as null,
   }));
-  await supabase
+  await writeClient
     .from('weekly_events')
     .upsert(rows, { onConflict: 'league_id,week_start', ignoreDuplicates: false });
 }
@@ -554,11 +555,15 @@ export async function hasRegistrationForWeek(
   return !regError && (regs?.length ?? 0) > 0;
 }
 
-/** Insert registration (event_id, wallet_address, tx_signature). Fails if already registered for this event or for another league this week, or if this tx was already used (one payment = one registration). */
+/**
+ * Insert registration (event_id, wallet_address, tx_signature). Fails if already registered for this event or for another league this week, or if this tx was already used (one payment = one registration).
+ * @param writeClient Service-role client; anon cannot INSERT registrations after RLS hardening.
+ */
 export async function insertRegistration(
   eventId: string,
   walletAddress: string,
-  txSignature: string
+  txSignature: string,
+  writeClient: SupabaseClient
 ): Promise<{ ok: boolean; error?: string }> {
   const sig = txSignature.trim();
   if (!sig) return { ok: false, error: 'Missing transaction signature' };
@@ -580,7 +585,7 @@ export async function insertRegistration(
   if (alreadyThisWeek) {
     return { ok: false, error: 'You can only register for one league per week. You are already registered this week.' };
   }
-  const { error } = await supabase.from('registrations').insert({
+  const { error } = await writeClient.from('registrations').insert({
     event_id: eventId,
     wallet_address: walletAddress,
     tx_signature: sig,
@@ -598,14 +603,17 @@ export function totalPointsSpent(config: UpgradeConfig): number {
   return SILVERSTONE_CATEGORY_IDS.reduce((sum, id) => sum + (Number(config[id] ?? 0) || 0), 0);
 }
 
-/** Update registration upgrade_config. Validates totalPointsSpent(config) <= maxPoints and no category can be reduced below already-saved value (upgrades are definitive until race day).
+/**
+ * Update registration upgrade_config. Validates totalPointsSpent(config) <= maxPoints and no category can be reduced below already-saved value (upgrades are definitive until race day).
  * Uses max(maxPoints, alreadySpent) so a wallet that had Creator bonus and spent it, then transferred the NFT away, is not penalized (points already spent remain valid).
+ * @param writeClient Service-role client; anon cannot UPDATE registrations after RLS hardening.
  */
 export async function updateRegistrationUpgrades(
   eventId: string,
   walletAddress: string,
   upgradeConfig: UpgradeConfig,
-  maxPoints: number
+  maxPoints: number,
+  writeClient: SupabaseClient
 ): Promise<{ ok: boolean; error?: string }> {
   const existing = await getRegistration(eventId, walletAddress);
   const alreadySpent = existing?.upgrade_config && typeof existing.upgrade_config === 'object'
@@ -625,7 +633,7 @@ export async function updateRegistrationUpgrades(
       }
     }
   }
-  const { error } = await supabase
+  const { error } = await writeClient
     .from('registrations')
     .update({ upgrade_config: upgradeConfig })
     .eq('event_id', eventId)
