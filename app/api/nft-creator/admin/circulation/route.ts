@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
-import { getConnection } from '@/lib/solana/connection';
+import { getConnectionForRequest } from '@/lib/solana/connection';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +43,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items: [] });
   }
 
-  const connection = getConnection();
+  // Use request-aware RPC proxy headers to avoid Helius 401/blocked-domain on server routes.
+  const connection = getConnectionForRequest(request);
   const stillInCirculation: Array<Record<string, unknown> & { current_holder?: string | null }> = [];
 
   for (const row of list) {
@@ -51,10 +52,18 @@ export async function GET(request: NextRequest) {
     if (!mint) continue;
     try {
       const pk = new PublicKey(mint);
-      const supply = await connection.getTokenSupply(pk);
-      const amount = supply?.value?.amount;
-      const ok = amount != null && BigInt(amount) > 0n;
-      if (!ok) continue;
+      let keep = true;
+      try {
+        const supply = await connection.getTokenSupply(pk);
+        const amount = supply?.value?.amount;
+        keep = amount != null && BigInt(amount) > 0n;
+      } catch (supplyErr) {
+        // Do not hide finalized NFTs just because supply lookup failed transiently.
+        // We keep the row and still try to resolve current holder best-effort.
+        console.warn('[nft-creator/admin/circulation] getTokenSupply failed, keeping row:', mint, supplyErr);
+        keep = true;
+      }
+      if (!keep) continue;
 
       let currentHolder: string | null = null;
       try {
