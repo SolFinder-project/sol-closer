@@ -272,7 +272,7 @@ function HomeContent({ setSection, globalStats, liveFeedRefreshTrigger = 0 }: { 
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider text-center mb-6">
           What you can reclaim
         </h2>
-        <div className="relative flex items-center gap-2 max-w-5xl mx-auto">
+        <div className="relative flex items-center gap-2 w-full">
           <button
             type="button"
             onClick={() => document.getElementById('reclaim-cards')?.scrollBy({ left: -280, behavior: 'smooth' })}
@@ -334,7 +334,7 @@ function HomeContent({ setSection, globalStats, liveFeedRefreshTrigger = 0 }: { 
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider text-center mb-6">
           Featured
         </h2>
-        <div className="relative flex items-stretch gap-2 max-w-4xl mx-auto">
+        <div className="relative flex items-stretch gap-2 w-full">
           <button
             type="button"
             onClick={() => document.getElementById('featured-sections')?.scrollBy({ left: -document.getElementById('featured-sections')!.clientWidth, behavior: 'smooth' })}
@@ -403,7 +403,7 @@ function HomeContent({ setSection, globalStats, liveFeedRefreshTrigger = 0 }: { 
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider text-center mb-6">
           Put your SOL to work
         </h2>
-        <div className="grid md:grid-cols-2 gap-4 max-w-3xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-4 w-full">
           <div className="card-cyber border-amber-500/30 bg-dark-card/80 hover:border-amber-500/50 transition-colors p-5 text-left">
             <p className="text-lg font-bold font-[family-name:var(--font-orbitron)] text-amber-400 mb-1">Stake with PSOL</p>
             <p className="text-sm text-gray-400 mb-4">Turn reclaimed SOL into PSOL (Phantom) or mSOL (Marinade). Earn staking rewards in-app.</p>
