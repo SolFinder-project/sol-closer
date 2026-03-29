@@ -234,13 +234,18 @@ export default function Home() {
 function HomeContent({ setSection, globalStats, liveFeedRefreshTrigger = 0 }: { setSection: (section: Section) => void; globalStats: any; liveFeedRefreshTrigger?: number }) {
   return (
     <>
-      {/* Hero — explicit, accurate, differentiated (4 sources, keep/stake/swap) */}
+      {/* Hero — wallet optimize + reclaim; second line: post-reclaim actions */}
       <div className="text-center mb-8 md:mb-10 animate-slide-up max-w-4xl mx-auto">
         <p className="text-xs font-medium text-neon-purple/90 uppercase tracking-wider mb-2 md:mb-3">
           Reclaim · Refuel · Race
         </p>
         <h1 className="text-xl md:text-3xl lg:text-4xl font-bold font-[family-name:var(--font-orbitron)] text-white mb-3 md:mb-4 leading-tight">
-          Reclaim SOL from more sources. Then keep, stake, swap, play or create.
+          <span className="block text-balance">
+            Optimize your wallet and reclaim SOL from many sources.
+          </span>
+          <span className="block mt-1.5 sm:mt-2 text-balance">
+            Then keep, stake, swap, play or create.
+          </span>
         </h1>
         <p className="text-sm md:text-base text-gray-400 max-w-2xl mx-auto mb-6 leading-relaxed">
           Empty token accounts, dust, <strong className="text-rose-400/90">Burn NFT</strong>, Pump.fun PDAs, PumpSwap PDAs, Drift accounts, and <strong className="text-amber-400/90">cNFT close</strong>{CNFT_BURN_COMING_SOON && <span className="text-xs font-normal ml-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 align-middle">Coming soon</span>} — reclaim in one app. Full reclaim in one transaction. Keep your SOL, or stake with <strong className="text-amber-400/90">PSOL</strong> (Phantom) or <strong className="text-neon-green/90">Marinade</strong>, or swap with <strong className="text-neon-cyan/90">Jupiter</strong> in one click. Compete in the <strong className="text-red-400/90">weekly F1 race</strong>; create <strong className="text-amber-400/90">F1-themed NFTs</strong> from eligible reclaims.

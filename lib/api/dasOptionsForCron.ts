@@ -1,11 +1,13 @@
 /**
  * RPC/DAS options for server-only jobs (Vercel Cron) that call Helius via the app `/api/rpc` proxy
- * with Origin/Referer so Allowed Domains accepts the request.
+ * with Origin/Referer so Helius "Allowed Domains" accepts the request.
  *
- * Prefer the current request origin when available (same deployment host), then fallback to env.
+ * Important: Vercel Cron invokes the route with `request.url` on `*.vercel.app`. If Helius only
+ * allowlists your canonical domain (e.g. solpit.app), using that host as Origin would 401. So we
+ * prefer NEXT_PUBLIC_APP_URL / NEXT_PUBLIC_SITE_URL when set, then request.url, then VERCEL_URL.
  *
- * Requires one of: NEXT_PUBLIC_APP_URL (preferred, same as rest of app), NEXT_PUBLIC_SITE_URL (legacy),
- * or VERCEL_URL (set by Vercel).
+ * Requires one of: NEXT_PUBLIC_APP_URL (preferred), NEXT_PUBLIC_SITE_URL, a valid `request.url`
+ * origin, or VERCEL_URL (set by Vercel).
  */
 /** Same shape as GameRpcOptions in lib/supabase/game.ts (avoid importing game from this module). */
 export type CronDasRpcOptions = {
@@ -18,19 +20,20 @@ function normalizeOrigin(raw: string): string {
 }
 
 function resolveAppOrigin(request?: Request): string {
+  const explicit =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (explicit) return normalizeOrigin(explicit);
+
   if (request?.url) {
     try {
       const fromRequest = new URL(request.url).origin;
       if (fromRequest) return normalizeOrigin(fromRequest);
     } catch {
-      // ignore and fallback to env
+      // ignore and fallback to VERCEL_URL
     }
   }
 
-  const explicit =
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (explicit) return normalizeOrigin(explicit);
   const vercel = process.env.VERCEL_URL?.trim();
   if (vercel) {
     const host = vercel.replace(/^https?:\/\//, '').replace(/\/$/, '');
