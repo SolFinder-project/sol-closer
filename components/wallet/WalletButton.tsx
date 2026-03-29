@@ -171,18 +171,6 @@ export default function WalletButton() {
               <button
                 type="button"
                 role="menuitem"
-                className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-[#AB9FF2]/15 border border-transparent hover:border-[#AB9FF2]/30 transition-colors"
-                onClick={() => {
-                  setShowConnectMenu(false);
-                  openPhantomConnect();
-                }}
-              >
-                <span className="font-semibold text-white text-sm">Phantom Connect</span>
-                <span className="block text-xs text-gray-400 mt-0.5">Google, Apple, or extension (official SDK)</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
                 className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-dark-border/50 transition-colors"
                 onClick={() => {
                   setShowConnectMenu(false);
@@ -191,6 +179,18 @@ export default function WalletButton() {
               >
                 <span className="font-semibold text-white text-sm">Browser wallets</span>
                 <span className="block text-xs text-gray-400 mt-0.5">Phantom extension, Solflare, …</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-[#AB9FF2]/15 border border-transparent hover:border-[#AB9FF2]/30 transition-colors"
+                onClick={() => {
+                  setShowConnectMenu(false);
+                  openPhantomConnect();
+                }}
+              >
+                <span className="font-semibold text-white text-sm">Phantom Connect</span>
+                <span className="block text-xs text-gray-400 mt-0.5">Phantom extension via official Connect SDK</span>
               </button>
             </div>
           </div>

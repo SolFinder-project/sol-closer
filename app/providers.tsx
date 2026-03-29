@@ -1,6 +1,7 @@
 'use client';
 
 import { PhantomConnectProvider } from '@/components/wallet/PhantomConnectProvider';
+import { PhantomInjectedWalletBridge } from '@/components/wallet/PhantomInjectedWalletBridge';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import {
@@ -85,6 +86,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <PhantomConnectProvider>
       <ConnectionProvider endpoint={endpoint}>
         <WalletProvider wallets={wallets} autoConnect>
+          <PhantomInjectedWalletBridge />
           <WalletModalProvider>{children}</WalletModalProvider>
         </WalletProvider>
       </ConnectionProvider>
