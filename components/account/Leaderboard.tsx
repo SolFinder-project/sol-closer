@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getLeaderboard } from '@/lib/supabase/transactions';
 
 interface LeaderboardUser {
@@ -16,6 +16,14 @@ export default function Leaderboard() {
   const [activeTab, setActiveTab] = useState<LeaderboardType>('sol');
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+
+  const copyWalletAddress = useCallback((address: string) => {
+    void navigator.clipboard.writeText(address).then(() => {
+      setCopiedAddress(address);
+      window.setTimeout(() => setCopiedAddress((a) => (a === address ? null : a)), 2000);
+    });
+  }, []);
 
   useEffect(() => {
     async function loadLeaderboard() {
@@ -143,9 +151,20 @@ export default function Leaderboard() {
             >
               <div className="flex items-center gap-3 md:gap-4 min-w-0">
                 <span className="text-2xl md:text-3xl shrink-0">{getEmojiForRank(rank)}</span>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-base md:text-lg font-bold text-white">#{rank}</p>
-                  <p className="text-xs md:text-sm text-gray-400 font-mono truncate">{formatWallet(user.wallet_address)}</p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <p className="text-xs md:text-sm text-gray-400 font-mono truncate max-w-[min(100%,14rem)] sm:max-w-xs" title={user.wallet_address}>
+                      {formatWallet(user.wallet_address)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => copyWalletAddress(user.wallet_address)}
+                      className="shrink-0 px-2 py-0.5 rounded-md text-xs font-medium border border-dark-border text-gray-400 hover:text-white hover:border-neon-purple/50 transition-colors"
+                    >
+                      {copiedAddress === user.wallet_address ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="text-right shrink-0">

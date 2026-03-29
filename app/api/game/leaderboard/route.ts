@@ -80,7 +80,8 @@ export async function GET(request: NextRequest) {
   const leaderboard = [
     ...results.map((r) => ({
       position: r.position,
-      wallet: maskWallet(r.wallet_address),
+      // Full address for podium (manual prize payouts); others stay masked for privacy.
+      wallet: r.position <= 3 ? r.wallet_address : maskWallet(r.wallet_address),
       lapTimeMs: r.lap_time_ms as number,
       isYou: withIsYou(r.wallet_address),
     })),

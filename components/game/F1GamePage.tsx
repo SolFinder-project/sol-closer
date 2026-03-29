@@ -10,6 +10,7 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { UPGRADE_CATEGORIES } from '@/lib/supabase/game';
 import { formatRaceTime, SILVERSTONE_BASE_TIME_MS } from '@/lib/silverstoneEngine';
+import { isValidSolanaAddress } from '@/lib/solana/validators';
 import type { NftCreatorTier } from '@/types/nftCreator';
 
 const LAMPORTS_PER_SOL = 1e9;
@@ -93,8 +94,17 @@ export default function F1GamePage() {
   const [upgradeSuccessMessage, setUpgradeSuccessMessage] = useState('');
   const [myLastRaceResult, setMyLastRaceResult] = useState<{ position: number; leagueName: string } | null>(null);
   const [creatorNfts, setCreatorNfts] = useState<{ mint: string; name: string; tier: NftCreatorTier }[] | null>(null);
+  const [copiedLeaderboardKey, setCopiedLeaderboardKey] = useState<string | null>(null);
 
   const walletStr = publicKey?.toBase58() ?? '';
+
+  const copyLeaderboardWallet = useCallback((address: string, rowKey: string) => {
+    if (!isValidSolanaAddress(address)) return;
+    void navigator.clipboard.writeText(address.trim()).then(() => {
+      setCopiedLeaderboardKey(rowKey);
+      window.setTimeout(() => setCopiedLeaderboardKey((k) => (k === rowKey ? null : k)), 2000);
+    });
+  }, []);
 
   const fetchGameState = useCallback(async () => {
     if (!walletStr) return;
@@ -625,6 +635,11 @@ export default function F1GamePage() {
             <p className="text-sm text-gray-500 mb-2">
               Prize pool: <span className="font-mono text-white">{prizePoolSol.toFixed(4)} SOL</span> (90% to top 3: 70% / 20% / 10%)
             </p>
+            <p className="text-xs sm:text-sm text-gray-500/90 leading-relaxed mb-4 max-w-2xl">
+              Prizes are sent manually after results are verified, typically within{' '}
+              <span className="text-gray-400 font-medium whitespace-nowrap">2 hours</span> of the race end (
+              <span className="font-mono text-gray-400 text-[0.7rem] sm:text-xs">Sunday 17:00 UTC</span>).
+            </p>
             {lastClosedEvents.length > 0 && leaderboardEventClosed && leaderboard.some((r) => r.isYou) && (
               <div className="mb-4 rounded-lg bg-amber-500/10 border border-amber-500/30 p-3">
                 <p className="text-xs font-medium text-amber-400 uppercase tracking-wider mb-2">
@@ -648,21 +663,36 @@ export default function F1GamePage() {
                 <p className="text-sm text-gray-500 py-4">No participants.</p>
               ) : (
                 <ul className="space-y-1">
-                  {leaderboard.map((r) => (
-                    <li
-                      key={r.position}
-                      className={`flex justify-between text-sm ${r.isYou ? 'text-amber-400 font-medium' : ''}`}
-                    >
-                      <span className="text-gray-400">#{r.position}</span>
-                      <span className="font-mono text-gray-300">
-                        {r.wallet}
-                        {r.isYou && ' (You)'}
-                      </span>
-                      <span className="font-mono text-white">
-                        {r.lapTimeMs != null ? formatRaceTime(r.lapTimeMs) : '—'}
-                      </span>
-                    </li>
-                  ))}
+                  {leaderboard.map((r) => {
+                    const rowKey = `${selectedLeaderboardEventId}-${r.position}-${r.wallet}`;
+                    const canCopyFull = isValidSolanaAddress(r.wallet);
+                    return (
+                      <li
+                        key={r.position}
+                        className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-sm sm:flex-nowrap sm:justify-between ${r.isYou ? 'text-amber-400 font-medium' : ''}`}
+                      >
+                        <span className="text-gray-400 shrink-0">#{r.position}</span>
+                        <span className="font-mono text-gray-300 min-w-0 flex-1 sm:text-center break-all sm:break-normal">
+                          {r.wallet}
+                          {r.isYou && ' (You)'}
+                        </span>
+                        <span className="flex items-center gap-1.5 shrink-0 sm:ml-auto">
+                          {canCopyFull && (
+                            <button
+                              type="button"
+                              onClick={() => copyLeaderboardWallet(r.wallet, rowKey)}
+                              className="px-2 py-0.5 rounded-md text-xs font-medium border border-dark-border text-gray-400 hover:text-white hover:border-neon-purple/50 transition-colors"
+                            >
+                              {copiedLeaderboardKey === rowKey ? 'Copied' : 'Copy'}
+                            </button>
+                          )}
+                          <span className="font-mono text-white tabular-nums">
+                            {r.lapTimeMs != null ? formatRaceTime(r.lapTimeMs) : '—'}
+                          </span>
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               )
             ) : (

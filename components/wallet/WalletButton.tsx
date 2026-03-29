@@ -2,16 +2,19 @@
 
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { useModal } from '@phantom/react-sdk';
 import { useCallback, useEffect, useState, useRef } from 'react';
 
 export default function WalletButton() {
   const { publicKey, disconnect, connecting, connected, wallet } = useWallet();
   const { setVisible } = useWalletModal();
+  const { open: openPhantomConnect } = useModal();
   const [isMobile, setIsMobile] = useState(false);
   const [isInWalletBrowser, setIsInWalletBrowser] = useState(false);
   const [currentWalletBrowser, setCurrentWalletBrowser] = useState<'phantom' | 'solflare' | null>(null);
   const [showMobileHelper, setShowMobileHelper] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showConnectMenu, setShowConnectMenu] = useState(false);
   const [isLocalOrigin, setIsLocalOrigin] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -42,6 +45,7 @@ export default function WalletButton() {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
+        setShowConnectMenu(false);
       }
     };
 
@@ -51,15 +55,25 @@ export default function WalletButton() {
 
   const handleClick = useCallback(() => {
     if (connected) {
+      setShowConnectMenu(false);
       setShowDropdown(!showDropdown);
       return;
     }
-    
+
     if (isMobile && !isInWalletBrowser) {
+      setShowConnectMenu(false);
       setShowMobileHelper(true);
       return;
     }
-    
+
+    // Desktop / large screen: one "Connect" button opens a menu (Phantom Connect vs wallet-adapter).
+    if (!isMobile) {
+      setShowConnectMenu((v) => !v);
+      return;
+    }
+
+    // Mobile inside Phantom / Solflare in-app browser: keep direct wallet-adapter modal.
+    setShowConnectMenu(false);
     setVisible(true);
   }, [connected, showDropdown, isMobile, isInWalletBrowser, setVisible]);
 
@@ -128,9 +142,59 @@ export default function WalletButton() {
               </svg>
             </span>
           ) : (
-            <span>Connect</span>
+            <span className="flex items-center gap-1">
+              Connect
+              {!isMobile && (
+                <svg
+                  className={`w-4 h-4 transition-transform ${showConnectMenu ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
+            </span>
           )}
         </button>
+
+        {/* Desktop: choose Phantom Connect (SDK) vs classic wallet-adapter modal */}
+        {showConnectMenu && !connected && !connecting && !isMobile && (
+          <div
+            className="absolute right-0 mt-2 w-[min(100vw-2rem,20rem)] bg-dark-card border border-dark-border rounded-xl shadow-2xl overflow-hidden z-50 animate-slide-up"
+            role="menu"
+            aria-label="Connection options"
+          >
+            <p className="px-3 py-2 text-xs text-gray-500 border-b border-dark-border">Choose how to connect</p>
+            <div className="p-2 space-y-1">
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-[#AB9FF2]/15 border border-transparent hover:border-[#AB9FF2]/30 transition-colors"
+                onClick={() => {
+                  setShowConnectMenu(false);
+                  openPhantomConnect();
+                }}
+              >
+                <span className="font-semibold text-white text-sm">Phantom Connect</span>
+                <span className="block text-xs text-gray-400 mt-0.5">Google, Apple, or extension (official SDK)</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-dark-border/50 transition-colors"
+                onClick={() => {
+                  setShowConnectMenu(false);
+                  setVisible(true);
+                }}
+              >
+                <span className="font-semibold text-white text-sm">Browser wallets</span>
+                <span className="block text-xs text-gray-400 mt-0.5">Phantom extension, Solflare, …</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Dropdown menu */}
         {showDropdown && connected && (
@@ -204,7 +268,7 @@ export default function WalletButton() {
                   onClick={() => {
                     disconnect();
                     setShowDropdown(false);
-                    setTimeout(() => setVisible(true), 100);
+                    setTimeout(() => setShowConnectMenu(true), 100);
                   }}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-dark-border/50 transition-colors text-left"
                 >
