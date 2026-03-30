@@ -16,6 +16,9 @@ import {
  * `@solana/wallet-adapter` uses. OAuth-only sessions (google/apple) do not drive the adapter,
  * which caused “connected” in Phantom’s modal while the app still showed “Connect”.
  *
+ * Note: the SDK `connect` event does not populate `user.authProvider`; the wallet bridge must
+ * not rely on `authProvider === "injected"` (see `PhantomInjectedWalletBridge`).
+ *
  * @see https://docs.phantom.com/sdks/react-sdk/connect — `injected` vs OAuth providers
  */
 export function PhantomConnectProvider({ children }: { children: ReactNode }) {
