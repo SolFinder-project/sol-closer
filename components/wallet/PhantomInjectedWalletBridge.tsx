@@ -1,11 +1,17 @@
 'use client';
 
-import type { ConnectResult } from '@phantom/browser-sdk';
+import type { ConnectResult, WalletAddress } from '@phantom/browser-sdk';
 import { usePhantom, useDisconnect, AddressType } from '@phantom/react-sdk';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { PhantomWalletName } from '@solana/wallet-adapter-phantom';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+
+const DEBUG_BRIDGE = process.env.NEXT_PUBLIC_DEBUG_PHANTOM_BRIDGE === '1';
+
+function bridgeLog(...args: unknown[]) {
+  if (DEBUG_BRIDGE) console.log('[phantom-wallet-bridge]', ...args);
+}
 
 /**
  * Phantom Connect (Browser SDK) and @solana/wallet-adapter keep separate connection state.
@@ -17,6 +23,14 @@ import { useEffect, useRef } from 'react';
  * extension flows. We must not require `user.authProvider === "injected"` or the bridge
  * never runs.
  *
+ * PhantomProvider sets `user` with `data ?? { addresses: addrs }`. If `data` is truthy but
+ * omits `addresses`, `user` can lack Solana while `usePhantom().addresses` (from
+ * `getAddresses()`) is correct — we merge both for gating and session keys.
+ *
+ * Do not gate on `isLoading` while `isConnected`: the provider keeps `isLoading` true until
+ * the initial `autoConnect()` finishes, which can block the bridge after a successful manual
+ * Phantom Connect.
+ *
  * We only skip bridging for explicit **embedded** OAuth / app-wallet sessions (google, apple,
  * phantom, device) which do not map to the injected extension that wallet-adapter uses.
  */
@@ -25,28 +39,58 @@ function isEmbeddedOnlyPhantomSession(user: ConnectResult | null): boolean {
   return p === 'google' || p === 'apple' || p === 'phantom' || p === 'device';
 }
 
-function hasSolanaAddress(user: ConnectResult | null): boolean {
-  return Boolean(user?.addresses?.some((a) => a.addressType === AddressType.solana));
+function hasSolanaInAddresses(list: WalletAddress[] | null | undefined): boolean {
+  if (!list?.length) return false;
+  return list.some((a) => a.addressType === AddressType.solana);
 }
 
 export function PhantomInjectedWalletBridge() {
-  const { isConnected: phantomConnected, user, isLoading: phantomLoading } = usePhantom();
+  const {
+    isConnected: phantomConnected,
+    user,
+    addresses: phantomAddresses,
+  } = usePhantom();
   const { disconnect: phantomSdkDisconnect } = useDisconnect();
   const { connected, connecting, connect, select, wallets, wallet } = useWallet();
 
   const bridgeTriedForSession = useRef<string | null>(null);
   const prevAdapterConnected = useRef<boolean | undefined>(undefined);
 
+  const effectiveAddresses = useMemo((): WalletAddress[] | null | undefined => {
+    if (phantomAddresses?.length) return phantomAddresses;
+    return user?.addresses;
+  }, [phantomAddresses, user?.addresses]);
+
   const shouldSyncAdapter =
     phantomConnected &&
-    !phantomLoading &&
     !isEmbeddedOnlyPhantomSession(user) &&
-    hasSolanaAddress(user);
+    hasSolanaInAddresses(effectiveAddresses);
 
   const sessionKey =
     user?.authUserId ??
-    user?.addresses?.map((a) => a.address).join(',') ??
+    effectiveAddresses?.map((a) => a.address).join(',') ??
     null;
+
+  useEffect(() => {
+    if (!DEBUG_BRIDGE) return;
+    bridgeLog('tick', {
+      shouldSyncAdapter,
+      phantomConnected,
+      sessionKey: sessionKey?.slice(0, 24),
+      adapterName: wallet?.adapter.name,
+      readyState: wallet?.readyState,
+      connected,
+      connecting,
+    });
+  }, [
+    shouldSyncAdapter,
+    phantomConnected,
+    sessionKey,
+    wallet?.adapter.name,
+    wallet?.readyState,
+    connected,
+    connecting,
+  ]);
 
   // Phase 1: wallet-adapter’s `connect()` uses the selected wallet from the last render;
   // calling `select` and `connect` in the same tick can connect the wrong adapter.
@@ -93,10 +137,10 @@ export function PhantomInjectedWalletBridge() {
   ]);
 
   useEffect(() => {
-    if (!phantomLoading && !phantomConnected) {
+    if (!phantomConnected) {
       bridgeTriedForSession.current = null;
     }
-  }, [phantomLoading, phantomConnected]);
+  }, [phantomConnected]);
 
   useEffect(() => {
     if (prevAdapterConnected.current === undefined) {
