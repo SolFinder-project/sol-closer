@@ -10,8 +10,9 @@ export const PHANTOM_CONNECT_APP_ICON_DEFAULT =
   'https://phantom-portal20240925173430423400000001.s3.ca-central-1.amazonaws.com/icons/aa1cfe8e-4f2f-4dbe-b460-f73963305d0f.png';
 
 /**
- * Must match an entry under "URL de redirection" in Phantom Portal.
- * Prefer NEXT_PUBLIC_PHANTOM_REDIRECT_URL in prod; else same origin as getSiteUrl().
+ * Must match exactly a whitelisted redirect URL in Phantom Portal (e.g. production
+ * `https://www.sol-pit.com`). Defaults follow getSiteUrl() — set NEXT_PUBLIC_APP_URL or
+ * NEXT_PUBLIC_PHANTOM_REDIRECT_URL if your deployment host differs from the portal entry.
  */
 export function getPhantomConnectRedirectUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_PHANTOM_REDIRECT_URL?.trim();

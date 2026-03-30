@@ -9,23 +9,20 @@ import {
 } from '@/lib/phantom/connectConfig';
 
 /**
- * Phantom Connect (portal SDK) — required for Phantom app directory review.
- * Wraps the app alongside @solana/wallet-adapter; does not replace adapter-based Phantom / Solflare.
+ * Phantom Connect — config aligned with Phantom Portal (Authentification) for SolPit:
+ * appId, appIcon, appName, addressTypes, redirectUrl, and providers google + apple + injected.
  *
- * We enable **injected** only so the session maps to the browser extension — the same path
- * `@solana/wallet-adapter` uses. OAuth-only sessions (google/apple) do not drive the adapter,
- * which caused “connected” in Phantom’s modal while the app still showed “Connect”.
+ * `PhantomInjectedWalletBridge` syncs only **injected** (extension) sessions to
+ * `@solana/wallet-adapter` (header, signatures). Google/Apple sessions stay SDK-only, same as
+ * Phantom’s own “Connected” UI vs dApp adapter split for non-injected providers.
  *
- * Note: the SDK `connect` event does not populate `user.authProvider`; the wallet bridge must
- * not rely on `authProvider === "injected"` (see `PhantomInjectedWalletBridge`).
- *
- * @see https://docs.phantom.com/sdks/react-sdk/connect — `injected` vs OAuth providers
+ * @see https://docs.phantom.com/sdks/react-sdk/connect
  */
 export function PhantomConnectProvider({ children }: { children: ReactNode }) {
   const config = useMemo((): PhantomSDKConfig => {
     return {
       appId: PHANTOM_CONNECT_APP_ID,
-      providers: ['injected'],
+      providers: ['google', 'apple', 'injected'],
       addressTypes: [AddressType.solana],
       authOptions: {
         redirectUrl: getPhantomConnectRedirectUrl(),
